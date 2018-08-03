@@ -19,6 +19,12 @@ auto.analyses<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,w
                         O2column<-c(4,5,6,7,13,14,15,16,22,23,24,25,31,32,33,34)
                         Tempcolumn<-c(8,9,10,11,17,18,19,20,26,27,28,29,35,36,37,38)
 
+                        resvolume<-c(ChamberVolume-Wfish[1],ChamberVolume-Wfish[2],ChamberVolume-Wfish[3],ChamberVolume-Wfish[4],ChamberVolume-Wfish[5],ChamberVolume-Wfish[6],ChamberVolume-Wfish[7],ChamberVolume)
+                        period<-opentime+closetime
+                        measureperiod<-closetime-waittime-enddiscard
+                        periodblc<-opentimeblc+closetimeblc
+                        measureperiodblc<-closetimeblc-waittimeblc-enddiscardblc
+
                         ############################File with Fish record######################
                         #########Moving average############
                         testdata<-data.frame(subset(Data,Timeabsolu2<2000))
@@ -38,7 +44,7 @@ auto.analyses<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,w
                         ##noise
                         noise<-sd(subset(testdata,Timeabsolu2>100&Timeabsolu2<200)[,4])
                         print(noise)
-                        
+
                         ##Find first endslope
                         Toppos<-list()
                         for (row in 1:nrow(testdata)){
@@ -54,12 +60,16 @@ auto.analyses<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,w
                           geom_vline(aes(xintercept = Firstend),color="red") + geom_text(aes(x=1000,y=6.5,label=paste("Temp =",mean(na.omit(Data$T.Ch1)),sep=" ")))
 print(c)
                                                 ggsave(c,filename="firstslope.pdf",path = wayout,width=20, height=4)
+question2 <- readline(prompt="First end slope is at the good position ?(YES or NO) : ")
+ifelse(question2=="YES",NA,{nperiod <-as.numeric(readline(prompt="How many periode do you want add (+) or delete (-) ? "));
+Firstend<-(nperiod*period)+Firstend;
+print(Firstend);
+c<-ggplot(Data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Data[,4]))+ylab(paste(colnames(Data[4]),unit)) +xlab("Time (sec)")+xlim(0,2000) +geom_vline(aes(xintercept = Firstend),color="red") + geom_text(aes(x=1000,y=6.5,label=paste("Temp =",mean(na.omit(Data$T.Ch1)),sep=" ")));
+ggsave(c,filename="firstslopecorrected.pdf",path = wayout,width=20, height=4);NA})
 
 
 
-                        resvolume<-c(ChamberVolume-Wfish[1],ChamberVolume-Wfish[2],ChamberVolume-Wfish[3],ChamberVolume-Wfish[4],ChamberVolume-Wfish[5],ChamberVolume-Wfish[6],ChamberVolume-Wfish[7],ChamberVolume)
-                        period<-opentime+closetime
-                        measureperiod<-closetime-waittime-enddiscard
+
                         firstmidpoint<-Firstend-enddiscard-(measureperiod/2)
                         wholeperiods<-(max(na.omit(Data$Timeabsolu2))-firstmidpoint)/period
                         numberoflowvalues<-wholeperiods/10 ####10 pourcent of point
@@ -87,20 +97,27 @@ print(c)
                         noise<-sd(testdata[c(51:100),4])
                         print(noise)
                         ##Find first endslope
-                        library("rlist", lib.loc="/Library/Frameworks/R.framework/Versions/3.0/Resources/library")
                         Toppos<-list()
                         for (row in c(51:950)){
                           ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(3*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA)
                         }
                         #Time of the first end slope
                         Firstendblank<-as.numeric(Toppos[[1]])
+                        print(Firstendblank)
                         #graph with end slope and mean temperature during experiment
-                        c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Datablank[,4]))+ylab(paste(colnames(Datablank[4]),unit)) +xlab("Time (sec)")
-                        d<-c + geom_vline(aes(xintercept = Firstendblank,color="red"))
-                        ggsave(d,filename="firstslopeblank.pdf",path = wayout,width=20, height=4)
-print(d)
-                        periodblc<-opentimeblc+closetimeblc
-                        measureperiodblc<-closetimeblc-waittimeblc-enddiscardblc
+                        c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Datablank[,4]))+ylab(paste(colnames(Datablank[4]),unit)) +xlab("Time (sec)") + geom_vline(aes(xintercept = Firstendblank,color="red"))
+                        print(c)
+                        ggsave(c,filename="firstslopeblank.pdf",path = wayout,width=20, height=4)
+
+ifelse(question1<-"YES",NA,{Firstendblank <-as.numeric(readline(prompt="Give a new value of First end "))+Firstendblank;c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Datablank[,4]))+ylab(paste(colnames(Datablank[4]),unit)) +xlab("Time (sec)") + geom_vline(aes(xintercept = Firstendblank,color="red"));ggsave(c,filename="firstslopeblankcorrected.pdf",path = wayout,width=20, height=4)})
+question1 <- readline(prompt="First end slope blank is at the good position ?(YES or NO) : ")
+ifelse(question1=="YES",NA,{nperiod <-as.numeric(readline(prompt="How many periode do you want add (+) or delete (-) ? "));
+Firstendblank<-(nperiod*periodblc)+Firstendblank;
+print(Firstendblank);
+c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Datablank[,4]))+ylab(paste(colnames(Datablank[4]),unit)) +xlab("Time (sec)") + geom_vline(aes(xintercept = Firstendblank,color="red"))
+ggsave(c,filename="firstslopeblankcorrected.pdf",path = wayout,width=20, height=4);NA})
+
+
                         firstmidpointblank<-Firstendblank-enddiscardblc-(measureperiodblc/2)
 
                         ###########################################################################################################
@@ -128,14 +145,14 @@ print(d)
                           res[i,10]<-summary(b)$r.squared
                         }
                         e<-lm(res[,5] ~ poly(res[,1], 4, raw=TRUE))
-                      
+
                         polyblank <- function(x) {e$coefficient[5]*x^4 + e$coefficient[4]*x^3 + e$coefficient[3]*x^2 + e$coefficient[2]*x + e$coefficient[1]}
                         res$Poly<-polyblank(res[,1])
                         c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]))+ylab(colnames(res[5])) +xlab("Time (h)")+ stat_smooth(aes(x=res[,1]/3600,y=res[,5]),method="lm", se=TRUE, fill=NA,formula=y ~ poly(x, 4, raw=TRUE),colour="blue") +geom_point(aes(x=res[,1]/3600,y=res[,11],colour="red"))
 
 
                       Resultblank<-res
-                        write.csv2(Resultblank,paste(wayout,"/resultchamberblank.csv",sep=""),row.names = F)
+                        write.table(Resultblank, paste(wayout, "/resultchamberblank.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
                         ggsave(c,filename="Blank.pdf",path = wayout,width=20, height=4)
 print(c)
 
@@ -144,16 +161,18 @@ print(c)
                         BlanktailTime<-mean(tail(Resultblank[,1],3))
 
                         #######################################Find start of slope deviation##################################
-                        testdata<-Resultblank[c(1:100),]
-                        noise<-sd(testdata[c(1:5),5])
-                        mean<-mean(testdata[c(1:5),5])
+                        noise<-sd(Resultblank[c(1:10),5])
+                        mean<-mean(Resultblank[c(1:10),5])
                         Toppos<-list()
-                        for (row in 1:nrow(testdata)){
-                          ifelse(testdata[row,11]>mean+1*noise,Toppos<-list.append(Toppos,testdata[row,1]),NA)
-                        }
+                        for (row in 1:nrow(Resultblank)){
+                        ifelse(Resultblank[row,11]>mean+2*noise,Toppos<-list.append(Toppos,Resultblank[row,1]),NA)
+ }
                         #Time of the start slope deviation
                         Firststart<-as.numeric(Toppos[1])
-                        c<-ggplot(testdata,environment=environment())+geom_point(aes(x=testdata[,1],y=testdata[,5]))+ylab(paste(colnames(testdata[5]),unit)) +xlab("Time (sec)")+geom_point(aes(x=testdata[,1],y=testdata[,11],colour="red"))+ geom_vline(aes(xintercept =Firststart/3600 ,color="red"))
+                        print(Firststart)
+                        c<-ggplot(Resultblank,environment=environment())+geom_point(aes(x=Resultblank[,1]/3600,y=Resultblank[,5]))+ylab(paste(colnames(Resultblank[5]))) +xlab("Time (sec)")+geom_point(aes(x=Resultblank[,1]/3600,y=Resultblank[,11],colour="red"))+ geom_vline(aes(xintercept =Firststart/3600 ,color="red"))
+
+
                         ggsave(c,filename="Blank_slope_start.pdf",path = wayout,width=20, height=4)
 print(c)
                         ##Create linear regression with start and end point of blank slope
@@ -200,7 +219,7 @@ print(c)
                             resblc[i,1]<-firstmidpointblank+(i-1)*periodblc
                             resblc[i,2]<-resblc[i,1]-(measureperiodblc/2)
                             resblc[i,3]<-resblc[i,1]+(measureperiodblc/2)
-                            merge(resblc,Datablank[,c(21,23)],by.x="MidTime (sec)",by.y="Timeabsolu2",all.x = T)
+                            merge(resblc,Datablank[,c(21,23)],by.x="MidTime (sec)",by.y="Timeabsolu2",all.x = T) ###A voir les colonnes datablank
                             Datachamberindvblc<-na.omit(Datablank[,c(23,O2column[l],Tempcolumn[l],1)])
                             linearregblc<-subset(Datachamberindvblc, Datachamberindvblc$Timeabsolu2>=resblc[i,2] & Datachamberindvblc$Timeabsolu2<=resblc[i,3])
                             b<-lm(linearregblc[,2]~linearregblc[,1])
@@ -230,10 +249,12 @@ print(c)
                           lowestO2value<-sort(res[,11],decreasing=F)[1:numberoflowvalues]
                           resstep1<-subset(res,res[,11]%in%c(lowestO2value))
                           resstep2<-subset(resstep1,resstep1[,10]>(meanRsquared-(nsdevsrsquared*SdRsquared)))
+                          #Changement à prendre en compte ici
                           res$selection<-ifelse(res[,11]%in%resstep2[,11] & res[,10]%in%resstep2[,10],"lowestO2valuersquerd",ifelse(res[,11]%in%resstep1[,11] & res[,10]%in%resstep1[,10],"lowestO2value","leftout"))
                           res$selection2<-ifelse(res[,10]>(meanRsquared-(nsdevsrsquared*SdRsquared)),"goodsquerd","badsquerd")
-                          write.csv2(res,paste(wayout,"/","resultchamber",l,".csv",sep=""),row.names = F)
-                          write.csv2(resblc,paste(wayout,"/","resultblankchamber.csv",sep="") ,row.names = F)
+                          write.table(res, paste(wayout, "/", "resultchamber", l, ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+                          write.table(resblc, paste(wayout, "/", "resultblankchamber.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+
 
                           c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]),alpha=0.1)+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=MO2cor,colour=selection)) +scale_color_manual(values = c("leftout" = "red","lowestO2value" = "blue","lowestO2valuersquerd" = "green"))
                           ggsave(c,filename=paste("Chamber",l,".pdf",sep=""),path = wayout,width=20, height=4)
@@ -246,8 +267,8 @@ print(c)
                           Result[l,5]<-sd(subset(res,res$selection=="lowestO2valuersquerd")$MO2cor)
                           Result[l,6]<-max(subset(res,res$selection2=="goodsquerd")$MO2cor)
                           Result[l,7]<-min(subset(res,res$selection=="lowestO2valuersquerd")$MO2cor)
-                          
-                          
+
+
                           ###FirstMR###
                           FMRmidpoint<-firstmidpoint+(1-1+(l-1))*period ####remove l-1 if you start all the chamber in the same time
                           FMRstartpoint<-res[1,1]-(measureperiod/2)
@@ -258,6 +279,6 @@ print(c)
                           Result[l,10]<-Wfish[[l]]
                           Result[l,11]<-ChamberVolume
                         }
-                        write.csv2(Result,paste(wayout,"/","ResultRun.csv",sep=""),row.names = F)
+                        write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
                         View(Result)
 }
