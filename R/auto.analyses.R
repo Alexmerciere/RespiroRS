@@ -181,7 +181,6 @@ print(c)
                         reg1<-lm(blankcorrectionreg[,2]~blankcorrectionreg[,1])
                         regblank <- function(x) reg1$coefficient[2]*x + reg1$coefficient[1]
 
-
                         ########################################################################################
 
 
@@ -216,7 +215,7 @@ print(c)
                           }
                           ##Blank Fish Chamber
                           for (i in c(1:3)){
-                            resblc[i,1]<-firstmidpointblank+(i-1)*periodblc
+                            resblc[i,1]<-(firstmidpointblank+(i-1)*periodblc)
                             resblc[i,2]<-resblc[i,1]-(measureperiodblc/2)
                             resblc[i,3]<-resblc[i,1]+(measureperiodblc/2)
                             merge(resblc,Datablank[,c(21,23)],by.x="MidTime (sec)",by.y="Timeabsolu2",all.x = T) ###A voir les colonnes datablank
@@ -239,6 +238,8 @@ print(c)
                           chambercorrectionreg[2,]<-c(BlanktailchamberTime,Blanktailchamber02)
                           reg2<-lm(chambercorrectionreg[,2]~chambercorrectionreg[,1])
                           regchamber <- function(x) reg2$coefficient[2]*x + reg2$coefficient[1]
+                          d<-ggplot(res,environment=environment())+geom_point(aes(x=res[,1],y=regchamber(res[,1])),colour="red")+geom_point(aes(x=res[,1],y=regblank(res[,1]))) +xlab("Time (h)") +ylab("MO2 (mg/h)")  +xlim(Firststart,max(res[,1]))
+                          ggsave(d,filename=paste("Chamber",l,"Deltaregression.pdf",sep=""),path = wayout,width=20, height=4)
 
                           res$deltablankfish<-ifelse(res[,1]>Firststart,regchamber(res[,1])-regblank(res[,1]),0)
                           res$Poly<-polyblank(res[,1])
@@ -250,23 +251,23 @@ print(c)
                           resstep1<-subset(res,res[,11]%in%c(lowestO2value))
                           resstep2<-subset(resstep1,resstep1[,10]>(meanRsquared-(nsdevsrsquared*SdRsquared)))
                           #Changement à prendre en compte ici
-                          res$selection<-ifelse(res[,11]%in%resstep2[,11] & res[,10]%in%resstep2[,10],"lowestO2valuersquerd",ifelse(res[,11]%in%resstep1[,11] & res[,10]%in%resstep1[,10],"lowestO2value","leftout"))
+                          res$selection<-ifelse(res[,11]%in%resstep2[,11] & res[,10]%in%resstep2[,10],"SMR",ifelse(res[,11]%in%resstep1[,11] & res[,10]%in%resstep1[,10],"lowestO2value","NotUsedInSMRcalculation"))
                           res$selection2<-ifelse(res[,10]>(meanRsquared-(nsdevsrsquared*SdRsquared)),"goodsquerd","badsquerd")
                           write.table(res, paste(wayout, "/", "resultchamber", l, ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
-                          write.table(resblc, paste(wayout, "/", "resultblankchamber.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+                          write.table(resblc, paste(wayout, "/", "resultblankchamber", l,".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 
 
-                          c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]),alpha=0.1)+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=MO2cor,colour=selection)) +scale_color_manual(values = c("leftout" = "red","lowestO2value" = "blue","lowestO2valuersquerd" = "green"))
+                          c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]),alpha=0.1)+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=MO2cor,colour=selection)) +scale_color_manual(values = c("NotUsedInSMRcalculation" = "red","lowestO2value" = "blue","SMR" = "green"))
                           ggsave(c,filename=paste("Chamber",l,".pdf",sep=""),path = wayout,width=20, height=4)
 print(c)
                           #####################################Final Table###################################################
                           Result[l,1]<-fishID[[l]]
                           Result[l,2]<-res$Date[[1]]
                           Result[l,3]<-fishposition[[l]]
-                          Result[l,4]<-mean(subset(res,res$selection=="lowestO2valuersquerd")$MO2cor)
-                          Result[l,5]<-sd(subset(res,res$selection=="lowestO2valuersquerd")$MO2cor)
+                          Result[l,4]<-mean(subset(res,res$selection=="SMR")$MO2cor)
+                          Result[l,5]<-sd(subset(res,res$selection=="SMR")$MO2cor)
                           Result[l,6]<-max(subset(res,res$selection2=="goodsquerd")$MO2cor)
-                          Result[l,7]<-min(subset(res,res$selection=="lowestO2valuersquerd")$MO2cor)
+                          Result[l,7]<-min(subset(res,res$selection=="SMR")$MO2cor)
 
 
                           ###FirstMR###
@@ -280,5 +281,5 @@ print(c)
                           Result[l,11]<-ChamberVolume
                         }
                         write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
-                        View(Result)
+                        ResultRun<<-Result
 }
