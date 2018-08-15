@@ -21,7 +21,7 @@ clean.mat <- function(waydata,waydatablank,newname,wayoutdata=NULL ){
     tableclean<-merge(tableclean,Table,by=c("Date","Time"),all=T)
   }
   tableclean$dmyhms<-dmy_hms(paste(tableclean$Date,tableclean$Time))
-  tableclean$Timeabsolu<-duration(interval(tableclean$dmyhms[[1]],tableclean$dmyhms))
+  tableclean$Timeabsolu<-as.duration(interval(tableclean$dmyhms[[1]],tableclean$dmyhms))
   tableclean$Timeabsolu2<-as.numeric(as.POSIXct(tableclean$dmyhms)-as.POSIXct(tableclean$dmyhms[[1]]), units="secs")
   write.table(tableclean, paste(paste(wayoutdata,"/",sep=""),newname,".csv",sep=""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 
@@ -43,7 +43,7 @@ clean.mat <- function(waydata,waydatablank,newname,wayoutdata=NULL ){
     tablecleanblank<-merge(tablecleanblank,Table,by=c("Date","Time"),all=T)
   }
   tablecleanblank$dmyhms<-dmy_hms(paste(tablecleanblank$Date,tablecleanblank$Time))
-  tablecleanblank$Timeabsolu<-duration(interval(tableclean$dmyhms[[1]],tablecleanblank$dmyhms))
+  tablecleanblank$Timeabsolu<-as.duration(interval(tableclean$dmyhms[[1]],tablecleanblank$dmyhms))
   tablecleanblank$Timeabsolu2<-as.numeric(as.POSIXct(tablecleanblank$dmyhms)-as.POSIXct(tableclean$dmyhms[[1]]), units="secs")
   write.table(tablecleanblank, paste(paste(wayoutdata,"/",sep=""),newname,"blank.csv",sep=""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 

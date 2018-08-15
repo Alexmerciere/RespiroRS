@@ -1,10 +1,11 @@
-auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,wayout,Nnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL){
+auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,wayout,Nnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,equalVolume=NULL){
 
   if (is.null(Nnoise)) {Nnoise<- 5 }
 
   if (is.null(correctFirstendslope)) { chamberfirstslope <-1 }
   if (!is.null(correctFirstendslope)) { chamberfirstslope <-correctFirstendslope }
   if (is.null(Nnoisestartdev)) {Nnoisestartdev<- 2 }
+  if (is.null(equalVolume)) {equalVolume<- T }
 
 
   ifelse (blankposition==1,deltaBlankposition<-1,deltaBlankposition<-0)
@@ -17,7 +18,9 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   opentime <- as.numeric(readline(prompt="opentime (s): "))  #s
   waittime <- as.numeric(readline(prompt="waittime (s): "))  #s
   enddiscard <- as.numeric(readline(prompt="enddiscard (s): "))  #s
-  ChamberVolume <- as.numeric(readline(prompt="ChamberVolume (L): "))  #L
+  ifelse (equalVolume==F,{ChamberVolume <- as.numeric(unlist(strsplit(readline(prompt="list of Chambers Volumes (L): "), ","))) }, {ChamberVolume <- as.numeric(readline(prompt="Chamber Volume (L): "));ChamberVolume <- rep(ChamberVolume,length(fishposition)+1)})
+
+  #ChamberVolume <- as.numeric(readline(prompt="ChamberVolume (L): "))  #L
 
   ##blank record
   closetimeblc <- as.numeric(readline(prompt="closetimeblank (s): "))  #s
@@ -30,7 +33,6 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   O2column<-c(4,5,6,7,13,14,15,16,22,23,24,25,31,32,33,34)
   Tempcolumn<-c(8,9,10,11,17,18,19,20,26,27,28,29,35,36,37,38)
 
-  resvolume<-c(ChamberVolume-Wfish[1],ChamberVolume-Wfish[2],ChamberVolume-Wfish[3],ChamberVolume-Wfish[4],ChamberVolume-Wfish[5],ChamberVolume-Wfish[6],ChamberVolume-Wfish[7],ChamberVolume)
   period<-opentime+closetime
   measureperiod<-closetime-waittime-enddiscard
   periodblc<-opentimeblc+closetimeblc
@@ -150,7 +152,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
     linearreg<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=res[i,2] & Datachamberindv$Timeabsolu2<=res[i,3])
     b<-lm(linearreg[,2]~linearreg[,1])
     res[i,4]<-b$coefficients[2]
-    res[i,5]<-(-b$coefficients[2]*(ChamberVolume)*3600)
+    res[i,5]<-(-b$coefficients[2]*(ChamberVolume[blankposition])*3600)
     res[i,6]<-Datachamberindv[i,3]
     res[i,7]<-as.character(Datachamberindv[1,4])
     res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
@@ -212,7 +214,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
       linearreg<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=res[i,2] & Datachamberindv$Timeabsolu2<=res[i,3])
       b<-lm(linearreg[,2]~linearreg[,1])
       res[i,4]<-b$coefficients[2]
-      res[i,5]<-(-b$coefficients[2]*(ChamberVolume-Wfish[l])*3600)
+      res[i,5]<-(-b$coefficients[2]*(ChamberVolume[l]-Wfish[l])*3600)
       res[i,6]<-Datachamberindv[i,3]
       res[i,7]<-as.character(Datachamberindv[1,4])
       res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
@@ -229,7 +231,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
       linearregblc<-subset(Datachamberindvblc, Datachamberindvblc$Timeabsolu2>=resblc[i,2] & Datachamberindvblc$Timeabsolu2<=resblc[i,3])
       b<-lm(linearregblc[,2]~linearregblc[,1])
       resblc[i,4]<-b$coefficients[2]
-      resblc[i,5]<-(-b$coefficients[2]*(ChamberVolume)*3600)
+      resblc[i,5]<-(-b$coefficients[2]*(ChamberVolume[l])*3600)
       resblc[i,6]<-Datachamberindvblc[i,3]
       resblc[i,7]<-as.character(Datachamberindv[1,4])
       resblc[i,8]<-summary(b)$coefficients["linearregblc[, 1]","Std. Error"]
@@ -255,7 +257,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
       linearregblc<-subset(Datachamberindvblc, Datachamberindvblc$Timeabsolu2>=resblcblc[i,2] & Datachamberindvblc$Timeabsolu2<=resblcblc[i,3])
       b<-lm(linearregblc[,2]~linearregblc[,1])
       resblcblc[i,4]<-b$coefficients[2]
-      resblcblc[i,5]<-(-b$coefficients[2]*(ChamberVolume)*3600)
+      resblcblc[i,5]<-(-b$coefficients[2]*(ChamberVolume[blankposition])*3600)
       resblcblc[i,6]<-Datachamberindvblc[i,3]
       resblcblc[i,7]<-as.character(Datachamberindvblc[1,4])
       resblcblc[i,8]<-summary(b)$coefficients["linearregblc[, 1]","Std. Error"]
@@ -324,10 +326,10 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
     FMRstartpoint<-res[1,1]-(measureperiod/2)
     linearregFMR<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=FMRstartpoint & Datachamberindv$Timeabsolu2<=FMRmidpoint)
     b<-lm(linearregFMR[,2]~linearregFMR[,1])
-    Result[l,8]<-(-b$coefficients[2]*(ChamberVolume-Wfish[l])*3600)
+    Result[l,8]<-(-b$coefficients[2]*(ChamberVolume[l]-Wfish[l])*3600)
     Result[l,9]<-mean(res[,6])
     Result[l,10]<-Wfish[[l]]
-    Result[l,11]<-ChamberVolume
+    Result[l,11]<-ChamberVolume[l]
   }
   write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
   ResultRun<<-Result
