@@ -1,11 +1,15 @@
-auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,wayout,Nnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,equalVolume=NULL){
+auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,wayout,startday,endday,Nnoise=NULL,Nnoiseblk=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,equalVolume=NULL,buffertime=NULL,acclimatationtime=NULL){
 
   if (is.null(Nnoise)) {Nnoise<- 5 }
+  if (is.null(Nnoise)) {Nnoiseblk<- 5 }
 
   if (is.null(correctFirstendslope)) { chamberfirstslope <-1 }
   if (!is.null(correctFirstendslope)) { chamberfirstslope <-correctFirstendslope }
   if (is.null(Nnoisestartdev)) {Nnoisestartdev<- 2 }
   if (is.null(equalVolume)) {equalVolume<- T }
+  if (is.null(buffertime)) {buffertime<- 3600 }
+  if (is.null(acclimatationtime)) {acclimatationtime<- 0 }
+
 
 
   ifelse (blankposition==1,deltaBlankposition<-1,deltaBlankposition<-0)
@@ -52,7 +56,7 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
   ##Calculate dif
   testdata$dif<-NA
   for (row in 1:nrow(testdata)){
-    ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<4900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
+    ifelse(testdata[row,1]>testdata[1,1]+99+adustfirstslope & testdata[row,1]<testdata[1,1]+4900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
 
   }
   ##graphic dif
@@ -60,13 +64,13 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
   print(c)
 
   ##noise
-  noise<-sd(na.omit(subset(Data,Timeabsolu2>100&Timeabsolu2<200)[,O2column[chamberfirstslope]]))
+  noise<-sd(na.omit(subset(Data,Timeabsolu2>testdata[1,1]+100&Timeabsolu2<testdata[1,1]+200)[,O2column[chamberfirstslope]]))
   print(noise)
 
   ##Find first endslope
   Toppos<-list()
   for (row in 1:nrow(testdata)){
-    ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<1900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
+    ifelse(testdata[row,1]>testdata[1,1]+99+adustfirstslope & testdata[row,1]<testdata[1,1]+1900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
   }
 
   #Time of the first end slope
@@ -74,7 +78,7 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
   print(Firstend)
 
   #graph with end slope
-  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,10000) +
+  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(testdata[1,1],testdata[1,1]+10000) +
     geom_vline(aes(xintercept = Firstend),color="red")
   print(c)
   ggsave(c,filename="firstslope.pdf",path = wayout,width=20, height=4)
@@ -82,7 +86,7 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
   ifelse(question2=="YES",NA,{nperiod <-as.numeric(readline(prompt="How many periode do you want add (+) or delete (-) ? "));
   Firstend<-(nperiod*period)+Firstend;
   print(Firstend);
-  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,10000) +geom_vline(aes(xintercept = Firstend),color="red") ;
+  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(testdata[1,1],testdata[1,1]+10000) +geom_vline(aes(xintercept = Firstend),color="red") ;
   ggsave(c,filename="firstslopecorrected.pdf",path = wayout,width=20, height=4);NA})
 
   Firstend<-Firstend-(corfirstslope*period)
@@ -118,7 +122,7 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
   ##Find first endslope
   Toppos<-list()
   for (row in c(51:950)){
-    ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(3*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA)
+    ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoiseblk*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA)
   }
   #Time of the first end slope
   Firstendblank<-as.numeric(Toppos[[1]])
@@ -197,8 +201,8 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
 
 
   ####################################RESULT CHAMBER FISH###############################################
-  Result<-data.frame(matrix(ncol=11,nrow=0))
-  colnames(Result)<- c("ID","Date", "Chamber","SMR","sdSMR","MaxMR","MinMR","FirstMR","MeanTemp (°C)","Weight (g)","Chamber Volume (L)")
+  Result<-data.frame(matrix(ncol=13,nrow=0))
+  colnames(Result)<- c("ID","Date", "Chamber","MinMRDay","sdMinMRDay","MaxMRNight","sdMaxMRNight","MeanMRDay","MeanMRNight","PhotoProduction","MeanTemp (°C)","Volume (L)","Chamber Volume (L)")
 
   for (l in position){
     res<-data.frame(matrix(ncol=11,nrow=0))
@@ -213,7 +217,6 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
       res[i,1]<-firstmidpoint+(i-1+(l-1))*period -(deltaBlankposition*period)###remove l-1 if you start all the chamber in the same time
       res[i,2]<-res[i,1]-(measureperiod/2)
       res[i,3]<-res[i,1]+(measureperiod/2)
-      merge(res,Data[,c(numdmyhms,timecolumn)],by.x="MidTime (sec)",by.y="Timeabsolu2",all.x = T)
       Datachamberindv<-na.omit(Data[,c(timecolumn,O2column[l],Tempcolumn[l],1)])
       linearreg<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=res[i,2] & Datachamberindv$Timeabsolu2<=res[i,3])
       b<-lm(linearreg[,2]~linearreg[,1])
@@ -224,6 +227,7 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
       res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
       res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]
       res[i,10]<-summary(b)$r.squared
+
     }
     ##Blank Fish Chamber
     for (i in c(1:3)){
@@ -307,33 +311,42 @@ auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,
     resstep3 <- subset(resstep2, resstep2[, 11] > (meanLowestO2values - (2 * SdLowestO2values)) & resstep2[, 11] < (meanLowestO2values + (2 * SdLowestO2values)))
 
     res$selection <- ifelse(res[, 11] %in% resstep3[, 11] & res[, 10] %in% resstep3[, 10], "SMR", ifelse(res[, 11] %in% resstep2[, 11] & res[, 10] %in% resstep2[, 10],"meanLowestO2valueOutlier", ifelse(res[, 11] %in% resstep1[, 11] & res[, 10] %in% resstep1[, 10], "NotUsedInSMRcalculation", "RsquaredOutlier")))
+    res<-merge(res,Data[,c(numdmyhms,timecolumn,2)],by.x="MidTime (sec)",by.y="Timeabsolu2",all.x = T)
+    res$selection2<-ifelse(as.numeric(hms(res[,"Time"]))>as.numeric(hms(startday))+buffertime & as.numeric(hms(res[,"Time"]))<as.numeric(hms(endday))-buffertime,"Day",ifelse(as.numeric(hms(res[,"Time"]))<as.numeric(hms(startday))-buffertime,"Night",ifelse(as.numeric(hms(res[,"Time"]))>as.numeric(hms(endday))+buffertime,"Night","Transition")))
+    res$selection2<-ifelse(res[,2]>res[1,2]+acclimatationtime,as.character(res$selection2),"Acclimatation")
+    res$selection3<-ifelse(res$selection2 %in% c("Day","Night","Transition"),as.character(res$selection2),"Acclimatation")
+
+    #lowest value day
+    day<-subset(res,res[,"selection2"]=="Day")
+    daylow<-subset(day,day[, 11] %in% c(sort(day[, 11], decreasing = F)[1:round(length(day[,11])*0.20)]))
+    #max value night
+    night<-subset(res,res[,"selection2"]=="Night")
+    nightmax<-subset(night,night[, 11] %in% c(sort(night[, 11], decreasing = T)[1:round(length(night[,11])*0.20)]))
+    res$selection4 <- ifelse(res[, 11] %in% daylow[, 11] & res[, 10] %in% daylow[, 10], "LowestO2valueDay", ifelse(res[, 11] %in% nightmax[, 11] & res[, 10] %in% nightmax[, 10],"MaxO2valueNight", ifelse(res[, 11] %in% resstep1[, 11] & res[, 10] %in% resstep1[, 10], res$selection3, "RsquaredOutlier")))
+
+
     #write Table
     write.table(res, paste(wayout, "/", "resultchamber", l, ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
     write.table(resblc, paste(wayout, "/", "resultblankchamber", l,".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 
-
-    c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]),alpha=0.1)+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=MO2cor,colour=selection)) +scale_color_manual(values = c("NotUsedInSMRcalculation" = "black","RsquaredOutlier" = "red","meanLowestO2valueOutlier"="blue","SMR" = "green"))
-    ggsave(c,filename=paste("Chamber",l,".pdf",sep=""),path = wayout,width=20, height=4)
+    c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]),alpha=0.1)+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=MO2cor,colour=selection4)) #+scale_color_manual(values = c("NotUsedInSMRcalculation" = "black","RsquaredOutlier" = "red","meanLowestO2valueOutlier"="blue","SMR" = "green"))
     print(c)
+    ggsave(c,filename=paste("Chamber",l,".pdf",sep=""),path = wayout,width=20, height=4)
     #####################################Final Table###################################################
+
     Result[l,1]<-ID[[l]]
     Result[l,2]<-res$Date[[1]]
     Result[l,3]<-position[[l]]
-    Result[l,4]<-mean(subset(res,res$selection=="SMR")$MO2cor)
-    Result[l,5]<-sd(subset(res,res$selection=="SMR")$MO2cor)
-    Result[l,6]<-max(subset(res,!res$selection=="RsquaredOutlier")$MO2cor)
-    Result[l,7]<-min(subset(res,res$selection=="SMR")$MO2cor)
-
-
-    ###FirstMR###
-    FMRmidpoint<-firstmidpoint+(1-1+(l-1))*period ####remove l-1 if you start all the chamber in the same time
-    FMRstartpoint<-res[1,1]-(measureperiod/2)
-    linearregFMR<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=FMRstartpoint & Datachamberindv$Timeabsolu2<=FMRmidpoint)
-    b<-lm(linearregFMR[,2]~linearregFMR[,1])
-    Result[l,8]<-(-b$coefficients[2]*(ChamberVolume[l]-Volcoral[l])*3600)
-    Result[l,9]<-mean(res[,6])
-    Result[l,10]<-Volcoral[[l]]
-    Result[l,11]<-ChamberVolume[l]
+    Result[l,4]<-mean(subset(res,res$selection4=="LowestO2valueDay")$MO2cor)
+    Result[l,5]<-sd(subset(res,res$selection4=="LowestO2valueDay")$MO2cor)
+    Result[l,6]<-mean(subset(res,res$selection4=="MaxO2valueNight")$MO2cor)
+    Result[l,7]<-sd(subset(res,res$selection4=="MaxO2valueNight")$MO2cor)
+    Result[l,8]<-mean(subset(res,res$selection4 %in% c("LowestO2valueDay","Day"))$MO2cor)
+    Result[l,9]<-mean(subset(res,res$selection4 %in% c("MaxO2valueNight","Night"))$MO2cor)
+    Result[l,10]<-(-(Result[l,8]-Result[l,9]))
+    Result[l,11]<-mean(res[,6])
+    Result[l,12]<-Volcoral[[l]]
+    Result[l,13]<-ChamberVolume[l]
   }
   write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
   ResultRun<<-Result

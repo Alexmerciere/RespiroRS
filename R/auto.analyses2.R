@@ -1,10 +1,11 @@
-auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,wayout,Nnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,equalVolume=NULL){
+auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,wayout,Nnoise=NULL,BlankNnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,equalVolume=NULL){
 
   if (is.null(Nnoise)) {Nnoise<- 5 }
+  if (is.null(BlankNnoise)) {BlankNnoise<- 5 }
 
   if (is.null(correctFirstendslope)) { chamberfirstslope <-1 }
   if (!is.null(correctFirstendslope)) { chamberfirstslope <-correctFirstendslope }
-  if (is.null(Nnoisestartdev)) {Nnoisestartdev<- 2 }
+  if (is.null(Nnoisestartdev)) {Nnoisestartdev<- 0.5 }
   if (is.null(equalVolume)) {equalVolume<- T }
 
 
@@ -98,14 +99,14 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   ###########################################################################################################
   ####################################File with Fishblank record#############################################
   #########Moving average############
-  testdata<-Datablank[1:1000,]
+  testdata<-Datablank
   testdata<-na.omit(testdata[,c(timecolumn,O2column[fishposition[1]])])
   library("pracma", lib.loc="/Library/Frameworks/R.framework/Versions/3.0/Resources/library")
   testdata$movavg<-movavg(testdata[,2],13,type=c("s"))
 
   ##Calculate dif
   testdata$dif<-NA
-  for (x in c(51:950)){
+  for (x in c(51:(nrow(testdata)-50))){
     testdata[x,4]<-(testdata[(x+50),3]-testdata[x,3]-(testdata[x,3]-testdata[(x-50),3]))
 
   }
@@ -113,12 +114,12 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   ggplot(testdata)+geom_point(aes(x=Timeabsolu2,y=dif))
 
   ##noise
-  noise<-sd(testdata[c(51:100),4])
+  noise<-sd(testdata[c(51:200),4])
   print(noise)
   ##Find first endslope
   Toppos<-list()
   for (row in c(51:950)){
-    ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(3*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA)
+    ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(BlankNnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA)
   }
   #Time of the first end slope
   Firstendblank<-as.numeric(Toppos[[1]])
@@ -178,10 +179,11 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   #################SLOPE BLANK RESPIRATION##############
   #######################################Find start of slope deviation##################################
   noise<-sd(Resultblank[c(1:10),5])
+  print(noise)
   mean<-mean(Resultblank[c(1:10),5])
   Toppos<-list()
   for (row in 1:nrow(Resultblank)){
-    ifelse(Resultblank[row,11]>mean+Nnoisestartdev*noise,Toppos<-list.append(Toppos,Resultblank[row,1]),NA)
+    ifelse(Resultblank[row,11]>(0+(Nnoisestartdev*noise)),Toppos<-list.append(Toppos,Resultblank[row,1]),NA)
   }
   #Time of the start slope deviation
   Firststart<-as.numeric(Toppos[1])
