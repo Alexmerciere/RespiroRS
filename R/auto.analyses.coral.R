@@ -1,4 +1,4 @@
-auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,wayout,Nnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,equalVolume=NULL){
+auto.analyses.coral<-function(Data,Datablank,Volcoral,position,ID,blankposition,wayout,Nnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,equalVolume=NULL){
 
   if (is.null(Nnoise)) {Nnoise<- 5 }
 
@@ -18,7 +18,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   opentime <- as.numeric(readline(prompt="opentime (s): "))  #s
   waittime <- as.numeric(readline(prompt="waittime (s): "))  #s
   enddiscard <- as.numeric(readline(prompt="enddiscard (s): "))  #s
-  ifelse (equalVolume==F,{ChamberVolume <- as.numeric(unlist(strsplit(readline(prompt="list of Chambers Volumes (L): "), ","))) }, {ChamberVolume <- as.numeric(readline(prompt="Chamber Volume (L): "));ChamberVolume <- rep(ChamberVolume,length(fishposition)+1)})
+  ifelse (equalVolume==F,{ChamberVolume <- as.numeric(unlist(strsplit(readline(prompt="list of Chambers Volumes (L): "), ","))) }, {ChamberVolume <- as.numeric(readline(prompt="Chamber Volume (L): "));ChamberVolume <- rep(ChamberVolume,length(position)+1)})
 
   #ChamberVolume <- as.numeric(readline(prompt="ChamberVolume (L): "))  #L
 
@@ -99,7 +99,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   ####################################File with Fishblank record#############################################
   #########Moving average############
   testdata<-Datablank[1:1000,]
-  testdata<-na.omit(testdata[,c(timecolumn,O2column[fishposition[1]])])
+  testdata<-na.omit(testdata[,c(timecolumn,O2column[position[1]])])
   library("pracma", lib.loc="/Library/Frameworks/R.framework/Versions/3.0/Resources/library")
   testdata$movavg<-movavg(testdata[,2],13,type=c("s"))
 
@@ -124,7 +124,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
   Firstendblank<-as.numeric(Toppos[[1]])
   print(Firstendblank)
   #graph with end slope and mean temperature during experiment
-  c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Datablank[,O2column[fishposition[1]]]))+ylab(paste(colnames(Datablank[O2column[fishposition[1]]]),unit)) +xlab("Time (sec)") + geom_vline(aes(xintercept = Firstendblank,color="red"))
+  c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Datablank[,O2column[position[1]]]))+ylab(paste(colnames(Datablank[O2column[position[1]]]),unit)) +xlab("Time (sec)") + geom_vline(aes(xintercept = Firstendblank,color="red"))
   print(c)
   ggsave(c,filename="firstslopeblank.pdf",path = wayout,width=20, height=4)
 
@@ -198,12 +198,12 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
 
   ####################################RESULT CHAMBER FISH###############################################
   Result<-data.frame(matrix(ncol=11,nrow=0))
-  colnames(Result)<- c("fishID","Date", "Chamber","SMR","sdSMR","MaxMR","MinMR","FirstMR","MeanTemp (°C)","Weight (g)","Chamber Volume (L)")
+  colnames(Result)<- c("ID","Date", "Chamber","SMR","sdSMR","MaxMR","MinMR","FirstMR","MeanTemp (°C)","Weight (g)","Chamber Volume (L)")
 
-  for (l in fishposition){
+  for (l in position){
     res<-data.frame(matrix(ncol=11,nrow=0))
     colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared","MO2cor")
-    numbperiods<-round(wholeperiods)-(fishposition[l]-1) - deltaBlankposition
+    numbperiods<-round(wholeperiods)-(position[l]-1) - deltaBlankposition
     resblc<-data.frame(matrix(ncol=11,nrow=0))
     colnames(resblc)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared","MO2cor")
 
@@ -218,7 +218,7 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
       linearreg<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=res[i,2] & Datachamberindv$Timeabsolu2<=res[i,3])
       b<-lm(linearreg[,2]~linearreg[,1])
       res[i,4]<-b$coefficients[2]
-      res[i,5]<-(-b$coefficients[2]*(ChamberVolume[l]-Wfish[l])*3600)
+      res[i,5]<-(-b$coefficients[2]*(ChamberVolume[l]-Volcoral[l])*3600)
       res[i,6]<-Datachamberindv[i,3]
       res[i,7]<-as.character(Datachamberindv[1,4])
       res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
@@ -292,22 +292,22 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
     res$MO2cor<-ifelse(res[,1]>Firststart,res[,5] - (res$Poly+res$deltablankfish),res[,5])
 
     # layer SMR
-#Rsquared layer
+    #Rsquared layer
     meanRsquared <- mean(res$Rsquared)
     SdRsquared <- sd(res$Rsquared)
     resstep1 <- subset(res, res[, 10] > (meanRsquared - (nsdevsrsquared * SdRsquared)))
 
-#lowest value layer
+    #lowest value layer
     LowestO2valueOutlier <- sort(res[, 11], decreasing = F)[1:numberoflowvalues]
     resstep2 <- subset(resstep1, resstep1[, 11] %in% c(LowestO2valueOutlier))
 
-#Mean lowest value layer
+    #Mean lowest value layer
     meanLowestO2values <- mean(resstep2$MO2cor)
     SdLowestO2values <- sd(resstep2$MO2cor)
     resstep3 <- subset(resstep2, resstep2[, 11] > (meanLowestO2values - (2 * SdLowestO2values)) & resstep2[, 11] < (meanLowestO2values + (2 * SdLowestO2values)))
 
     res$selection <- ifelse(res[, 11] %in% resstep3[, 11] & res[, 10] %in% resstep3[, 10], "SMR", ifelse(res[, 11] %in% resstep2[, 11] & res[, 10] %in% resstep2[, 10],"meanLowestO2valueOutlier", ifelse(res[, 11] %in% resstep1[, 11] & res[, 10] %in% resstep1[, 10], "NotUsedInSMRcalculation", "RsquaredOutlier")))
-   #write Table
+    #write Table
     write.table(res, paste(wayout, "/", "resultchamber", l, ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
     write.table(resblc, paste(wayout, "/", "resultblankchamber", l,".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 
@@ -316,9 +316,9 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
     ggsave(c,filename=paste("Chamber",l,".pdf",sep=""),path = wayout,width=20, height=4)
     print(c)
     #####################################Final Table###################################################
-    Result[l,1]<-fishID[[l]]
+    Result[l,1]<-ID[[l]]
     Result[l,2]<-res$Date[[1]]
-    Result[l,3]<-fishposition[[l]]
+    Result[l,3]<-position[[l]]
     Result[l,4]<-mean(subset(res,res$selection=="SMR")$MO2cor)
     Result[l,5]<-sd(subset(res,res$selection=="SMR")$MO2cor)
     Result[l,6]<-max(subset(res,!res$selection=="RsquaredOutlier")$MO2cor)
@@ -330,9 +330,9 @@ auto.analyses2<-function(Data,Datablank,Wfish,fishposition,fishID,blankposition,
     FMRstartpoint<-res[1,1]-(measureperiod/2)
     linearregFMR<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=FMRstartpoint & Datachamberindv$Timeabsolu2<=FMRmidpoint)
     b<-lm(linearregFMR[,2]~linearregFMR[,1])
-    Result[l,8]<-(-b$coefficients[2]*(ChamberVolume[l]-Wfish[l])*3600)
+    Result[l,8]<-(-b$coefficients[2]*(ChamberVolume[l]-Volcoral[l])*3600)
     Result[l,9]<-mean(res[,6])
-    Result[l,10]<-Wfish[[l]]
+    Result[l,10]<-Volcoral[[l]]
     Result[l,11]<-ChamberVolume[l]
   }
   write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
