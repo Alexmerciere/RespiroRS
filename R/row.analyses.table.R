@@ -1,143 +1,125 @@
-row.analyses.table<-function(Data,Wfish,fishposition,fishID,blankposition=NULL,wayout,Nnoise=NULL,Outliers=NULL,Samestart=NULL,Blank=NULL){
+row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition=NULL,Nnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,waittime=NULL,enddiscard=NULL){
 
-  if (is.null(Nnoise)) {Nnoise<- 5 }
-  if (is.null(blankposition)) {deltaBlankposition<- 0}
-  if (is.null(Outliers)) {Outliers<- 0 }
-  if (is.null(Samestart)) {Samestart<- F }
-  if (is.null(Blank)) {Blank<-T}
-  ifelse(blankposition==1,deltaBlankposition<-1,deltaBlankposition<- 0)
-  #################Experiment Settings##############
-  ##record
-  closetime <- as.numeric(readline(prompt="closetime (s): "))  #s
-  opentime <- as.numeric(readline(prompt="opentime (s): "))  #s
-  waittime <- as.numeric(readline(prompt="waittime (s): "))  #s
-  enddiscard <- as.numeric(readline(prompt="enddiscard (s): "))  #s
-  ChamberVolume <- as.numeric(readline(prompt="ChamberVolume (L): "))  #L
-
-  nsdevsrsquared<-2
-  unit<-"mg/L"
-  O2column<-c(4,5,6,7,13,14,15,16,22,23,24,25,31,32,33,34)
-  Tempcolumn<-c(8,9,10,11,17,18,19,20,26,27,28,29,35,36,37,38)
-
-  resvolume<-c(ChamberVolume-Wfish[1],ChamberVolume-Wfish[2],ChamberVolume-Wfish[3],ChamberVolume-Wfish[4],ChamberVolume-Wfish[5],ChamberVolume-Wfish[6],ChamberVolume-Wfish[7],ChamberVolume)
-  period<-opentime+closetime
-  measureperiod<-closetime-waittime-enddiscard
-  fishposition<-as.numeric(fishposition)
-
-  ############################File with Fish record######################
-  #########Moving average############
-  testdata<-data.frame(subset(Data,Timeabsolu2<10000))
-  testdata<-na.omit(testdata[,c(23,O2column[fishposition[1]])])
-  testdata$movavg<-movavg(testdata[,2],13,type=c("s"))
-
-  ##Calculate dif
-  testdata$dif<-NA
-  for (row in 1:nrow(testdata)){
-    ifelse(testdata[row,1]>99 & testdata[row,1]<1900,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
-
-  }
-  ##graphic dif
-  c<-ggplot(testdata)+geom_point(aes(x=Timeabsolu2,y=dif))
-  print(c)
-
-  ##noise
-  noise<-sd(subset(testdata,Timeabsolu2>100&Timeabsolu2<200)[,4])
-  print(noise)
-
-  ##Find first endslope
-  Toppos<-list()
-  for (row in 1:nrow(testdata)){
-    ifelse(testdata[row,1]>99 & testdata[row,1]<1900,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
-  }
-
-  #Time of the first end slope
-  Firstend<-as.numeric(Toppos[[1]])
-  print(Firstend)
-
-  #graph with end slope and mean temperature during experiment
-  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Data[,O2column[fishposition[1]]]))+ylab(paste(colnames(Data[O2column[fishposition[1]]]),unit)) +xlab("Time (sec)")+xlim(0,10000) +
-    geom_vline(aes(xintercept = Firstend),color="red")
-  print(c)
-  ggsave(c,filename="firstslope.pdf",path = wayout,width=20, height=4)
-  question2 <- readline(prompt="First end slope is at the good position ?(YES or NO) : ")
-  ifelse(question2=="YES",NA,{nperiod <-as.numeric(readline(prompt="How many periode do you want add (+) or delete (-) ? "));
-  Firstend<-(nperiod*period)+Firstend;
-  print(Firstend);
-  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=Data[,4]))+ylab(paste(colnames(Data[4]),unit)) +xlab("Time (sec)")+xlim(0,2000) +geom_vline(aes(xintercept = Firstend),color="red");
-  ggsave(c,filename="firstslopecorrected.pdf",path = wayout,width=20, height=4);NA})
+    if (is.null(Nnoise)) {Nnoise<- 5 }
+    if (is.null(correctFirstendslope)) { chamberfirstslope <-Fishbase[ which(Fishbase$fishID==fishID[1]),"Nb_Ch"]  }
+    if (!is.null(correctFirstendslope)) { chamberfirstslope <-correctFirstendslope }
+    if (is.null(Nnoisestartdev)) {Nnoisestartdev<- 0.5 }
 
 
+    if (is.null(Wfish)) {Wfish<- Fishbase[ which(Fishbase$fishID%in%fishID),"W"] }
+    if (is.null(fishposition)) {fishposition<- Fishbase[ which(Fishbase$fishID%in%fishID),"Nb_Ch"] }
+
+    ifelse (chamberfirstslope==1,corfirstslope<-0,corfirstslope<-chamberfirstslope-1)
+    nbchanalyses<-length(fishID)
+
+    #################Experiment Settings##############
+    ##fish record
+    closetime <- Fishbase[ which(Fishbase$fishID==fishID[1]),"Close_Time"]  #s
+    opentime <- Fishbase[ which(Fishbase$fishID==fishID[1]),"Flush_Time"]  #s
+    if (is.null(waittime)) {waittime<- 50 } #s
+    if (is.null(enddiscard)) {enddiscard<- 22 } #s
+
+    nsdevsrsquared<-0.5
+    unit<-"mg/L"
+    O2column<-c("Ox.1","Ox.2","Ox.3","Ox.4","Ox.5","Ox.6","Ox.7","Ox.8","Ox.9","Ox.10","Ox.11","Ox.12","Ox.13","Ox.14","Ox.15","Ox.16")
+    Tempcolumn<-c("Temp.1","Temp.2","Temp.3","Temp.4","Temp.5","Temp.6","Temp.7","Temp.8","Temp.9","Temp.10","Temp.11","Temp.12","Temp.13","Temp.14","Temp.15","Temp.16")
+
+    period<-opentime+closetime
+    measureperiod<-closetime-waittime-enddiscard
+    ifelse(chamberfirstslope==1,adustfirstslope<-0, adustfirstslope<-chamberfirstslope*(period/2))
+
+    numdmyhms<-grep("DateTime", colnames(Data))
+    Data<-arrange(Data, Time.s)
 
 
-  firstmidpoint<-Firstend-enddiscard-(measureperiod/2)
-  wholeperiods<-(max(na.omit(Data$Timeabsolu2))-firstmidpoint)/period
-  numbperiods<-round(wholeperiods)
+    ############################File with Fish record######################
+    #########Moving average############
+    Data[,O2column[chamberfirstslope]]<-as.numeric(as.character(Data[,O2column[chamberfirstslope]]))
+    Data[,Tempcolumn[chamberfirstslope]]<-as.numeric(as.character(Data[,Tempcolumn[chamberfirstslope]]))
+    testdata<-data.frame(subset(Data,Time.s<100000))
+    testdata<-na.omit(testdata[,c("Time.s",O2column[chamberfirstslope])])
+    testdata$movavg<-movavg(as.numeric(testdata[,2]),13,type=c("s"))
 
-     ###########################################################################################################
-
-  ####################################RESULT CHAMBER BLANK######################################################
-if (Blank==T) {
-  res<-data.frame(matrix(ncol=11,nrow=0));
-  colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared","dmyhms");
-  ifelse (Samestart==T,numbperiods<-as.numeric(round(wholeperiods)),numbperiods<-as.numeric(round(wholeperiods)-(blankposition-1) + deltaBlankposition));
-  print(numbperiods);
-
-  ##Create table with mid time measurment, start and end per chamber
-  for (i in 1:numbperiods){
-    ifelse (Samestart==T,res[i,1]<-firstmidpoint+(i-1)*period,res[i,1]<-firstmidpoint+(i-1+(blankposition-1))*period -(deltaBlankposition*period))#### blank chamber position to find start firstmid slope
-    res[i,2]<-res[i,1]-(measureperiod/2)
-    res[i,3]<-res[i,1]+(measureperiod/2)
-    merge(res,Data[,c(21,23)],by.x="MidTime (sec)",by.y="Timeabsolu2",all.x = T)
-    Datachamberindv<-na.omit(Data[,c(23,O2column[blankposition],Tempcolumn[blankposition],1)])
-    linearreg<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=res[i,2] & Datachamberindv$Timeabsolu2<=res[i,3])
-    b<-lm(linearreg[,2]~linearreg[,1])
-    res[i,4]<-b$coefficients[2]
-    res[i,5]<-(-b$coefficients[2]*(ChamberVolume)*3600)
-    res[i,6]<-Datachamberindv[i,3]
-    res[i,7]<-as.character(Datachamberindv[1,4])
-    res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
-    res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]
-    res[i,10]<-summary(b)$r.squared
-    res[i,11]<-as.character(Data[as.numeric(which(Data$Timeabsolu2 == res[i,1])),"dmyhms"])
-  };
-  n<-nrow(res);
-  res<-res[1:(n-Outliers),];
-  Resultblank<-res;
-  write.table(Resultblank, paste(wayout, "/rowresultchamberblank.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double");
-  print(c)
-}
-
-  ####################################RESULT CHAMBER FISH###############################################
-
-  for (l in fishposition){
-    res<-data.frame(matrix(ncol=11,nrow=0))
-    colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared","dmyhms")
-    ifelse (Samestart==T,numbperiods<-as.numeric(round(wholeperiods)),numbperiods<-as.numeric(round(wholeperiods)-(fishposition[l]-1) - deltaBlankposition))
-
-    ##Record Fish Chamber
-    ##Create table with mid time measurment, start and end per chamber
-    for (i in 1:numbperiods){
-      ifelse (Samestart==T,res[i,1]<-firstmidpoint+(i-1)*period,res[i,1]<-firstmidpoint+(i-1+(l-1))*period -(deltaBlankposition*period))####remove l-1 if you start all the chamber in the same time
-      res[i,2]<-res[i,1]-(measureperiod/2)
-      res[i,3]<-res[i,1]+(measureperiod/2)
-      merge(res,Data[,c(21,23)],by.x="MidTime (sec)",by.y="Timeabsolu2",all.x = T)
-      Datachamberindv<-na.omit(Data[,c(23,O2column[l],Tempcolumn[l],1)])
-      linearreg<-subset(Datachamberindv, Datachamberindv$Timeabsolu2>=res[i,2] & Datachamberindv$Timeabsolu2<=res[i,3])
-      b<-lm(linearreg[,2]~linearreg[,1])
-      res[i,4]<-b$coefficients[2]
-      res[i,5]<-(-b$coefficients[2]*(ChamberVolume-Wfish[l])*3600)
-      res[i,6]<-Datachamberindv[i,3]
-      res[i,7]<-as.character(Datachamberindv[1,4])
-      res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
-      res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]
-      res[i,10]<-summary(b)$r.squared
-      res[i,11]<-as.character(Data[as.numeric(which(Data$Timeabsolu2 == res[i,1])),"dmyhms"])
+    ##Calculate dif
+    testdata$dif<-NA
+    for (row in 1:nrow(testdata)){
+      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<4900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
 
     }
-    n<-nrow(res)
-    res<-res[1:(n-Outliers),]
-    write.table(res, paste(wayout, "/", "rowresultchamber", l, ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+    ##graphic dif
+    c<-ggplot(testdata)+geom_point(aes(x=Time.s,y=dif))
+    print(c)
+
+    ##noise
+    noise<-sd(na.omit(subset(Data,Time.s>100&Time.s<200)[,O2column[chamberfirstslope]]))
+    print(noise)
+
+    ##Find first endslope
+    Toppos<-list()
+    for (row in 1:nrow(testdata)){
+      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<1900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
+    }
+
+    #Time of the first end slope
+    Firstend<-as.numeric(Toppos[[1]])
+    print(Firstend)
+
+    #graph with end slope
+
+    c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,10000) +
+      geom_vline(aes(xintercept = Firstend),color="red")
+    print(c)
+    ggsave(c,filename="firstslope.pdf",path = wayout,width=20, height=4)
+    question2 <- readline(prompt="First end slope is at the good position ?(YES or NO) : ")
+    if(question2=="NO"){startday <-as.character(readline(prompt="Time of start ?(ex:08:43:01) : "));
+    Firstend<-Data[which(Data$Time==startday),"Time.s"]+closetime;
+    print(Firstend[1]);
+    c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,10000) +geom_vline(aes(xintercept = Firstend[1]),color="red") ;
+    ggsave(c,filename="firstslopecorrected.pdf",path = wayout,width=20, height=4)}
+
+    Firstend<-Firstend[1]-(corfirstslope*period)
+
+
+
+    firstmidpoint<-Firstend-enddiscard-(measureperiod/2)
+    wholeperiods<-(max(na.omit(Data$Time.s))-firstmidpoint)/period
+
+      ###########################################################################################################
+
+    ####################################RESULT CHAMBER FISH###############################################
+
+    for (l in fishID){
+      res<-data.frame(matrix(ncol=10,nrow=0))
+      colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared")
+      numbperiods<-round(wholeperiods)-(Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]-1)
+
+      ##Record Fish Chamber
+      ##Create table with mid time measurment, start and end per chamber
+      for (i in 1:numbperiods){
+        res[i,1]<-firstmidpoint+(i-1+(Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]-1))*period
+        res[i,2]<-res[i,1]-(measureperiod/2)
+        res[i,3]<-res[i,1]+(measureperiod/2)
+        Data[,O2column[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]]]<-as.numeric(as.character(Data[,O2column[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]]]))
+        Data[,Tempcolumn[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]]]<-as.numeric(as.character(Data[,Tempcolumn[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]]]))
+        merge(res,Data[,c("DateTime","Time.s")],by.x="MidTime (sec)",by.y="Time.s",all.x = T)
+        Datachamberindv<-na.omit(Data[,c("Time.s",O2column[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]],Tempcolumn[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]])])
+        linearreg<-subset(Datachamberindv, Datachamberindv$Time.s>=res[i,2] & Datachamberindv$Time.s<=res[i,3])
+        b<-lm(linearreg[,2]~linearreg[,1])
+        res[i,4]<-b$coefficients[2]
+        res[i,5]<-(-b$coefficients[2]*(Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"]-Fishbase[ which(Fishbase$fishID==l),"W"])*3600)
+        res[i,6]<-Datachamberindv[i,3]
+        res[i,7]<-as.character(Data[1,"DateTime"])
+        res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
+        res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]
+        res[i,10]<-summary(b)$r.squared
+      }
+
+      #write Table per chamber
+      write.table(res, paste(wayout, "/", "resultchamber", Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"], ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+
+      c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]))+ylab(colnames(res[5])) +xlab("Time (h)")
+      ggsave(c,filename=paste("Chamber",Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"],".pdf",sep=""),path = wayout,width=20, height=4)
+      print(c)
 
   }
 }
-
