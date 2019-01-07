@@ -17,17 +17,21 @@ auto.analyses.coral.oneslope<-function(Data,Volcoral,position,ID,wayout,startday
   timecolumn<-grep("Timeabsolu2", colnames(Data))
   numdmyhms<-grep("dmyhms", colnames(Data))
   Data<-arrange(Data, Timeabsolu2)
+  ###TempGraph
+  c<-ggplot(data,environment = environment())+geom_point(aes(x=Timeabsolu2,y=as.numeric(as.character(data[,Tempcolumn[1]]))))+ylab(paste(colnames(data[Tempcolumn[1]]),"Temp (°C)")) +xlab("Time (sec)")
+  print(c)
+  ggsave(c,filename="TempRun.pdf",path = wayout,width=20, height=4)
 
   ##Result Table
-  Result<-data.frame(matrix(ncol=11,nrow=0))
-  colnames(Result)<- c("ID","Date", "Chamber","RowDayvalue","DayRsquare","Dayvalue","Rownightvalue","NightRsquare","NightValue","VolCoral","ChamberVolume")
+  Result<-data.frame(matrix(ncol=13,nrow=0))
+  colnames(Result)<- c("ID","Date", "Chamber","RowDayvalue","DayRsquare","Dayvalue","Rownightvalue","NightRsquare","NightValue","VolCoral","ChamberVolume","Temp","sdTemp")
   ##Create Day and Night Table
   Daydata<-subset(Data,as.numeric(hms(Data[,"Time"]))>as.numeric(hms(startday))+waittime & as.numeric(hms(Data[,"Time"]))<as.numeric(hms(startday))+(closetime-enddiscard))
     Nightdata<-subset(Data,as.numeric(hms(Data[,"Time"]))>as.numeric(hms(startnight))+waittime & as.numeric(hms(Data[,"Time"]))<as.numeric(hms(startnight))+(closetime-enddiscard))
 
   for (l in position){
     Result[l,1]<-ID[[l]]
-    Result[l,2]<-Data$Date[[1]]
+    Result[l,2]<-as.character(Data$Date[[1]])
     Result[l,3]<-position[[l]]
 
     ifelse(is.null(startday),NA,{
@@ -54,7 +58,11 @@ auto.analyses.coral.oneslope<-function(Data,Volcoral,position,ID,wayout,startday
   Result[l,10]<-Volcoral[[l]];
   Result[l,11]<-ChamberVolume[l]})
 
+    Result[l,12]<-mean(na.omit(as.numeric(as.character(Data[,Tempcolumn[l]]))))
+    Result[l,13]<-sd(na.omit(as.numeric(as.character(Data[,Tempcolumn[l]]))))
   }
+
+
     write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
     ResultRun<<-Result
 
