@@ -1,6 +1,7 @@
-clean.row.pyro <- function(waydata,waydatablank=NULL,newname,wayoutdata=NULL,Gap=NULL ){
+clean.row.pyro <- function(waydata,waydatablank=NULL,newname,wayoutdata=NULL,Gap=NULL,dateformat=NULL){
   if (is.null(wayoutdata)) {wayoutdata <- waydata }
   if (is.null(Gap)) {Gap <- 20 }
+  if (is.null(dateformat)) {dateformat <- "dmy" }
 
   fichiers<-list.files(waydata,pattern=".txt")
   tableclean<-data.frame(matrix(nrow=0,ncol=2))
@@ -18,9 +19,10 @@ clean.row.pyro <- function(waydata,waydatablank=NULL,newname,wayoutdata=NULL,Gap
     colnames(Table)<- c("Date", "Time", paste("FS",file.position,"Time.s",sep=""),paste("Ox.",chamber.position[file.position]+1,sep=""),paste("Temp.",chamber.position[file.position]+1,sep=""),paste("Ox.",chamber.position[file.position]+2,sep=""),paste("Temp.",chamber.position[file.position]+2,sep=""),paste("Ox.",chamber.position[file.position]+3,sep=""),paste("Temp.",chamber.position[file.position]+3,sep=""),paste("Ox.",chamber.position[file.position]+4,sep=""),paste("Temp.",chamber.position[file.position]+4,sep=""))
     tableclean<-merge(tableclean,Table,by=c("Date","Time"),all=T)
   }
+  if(dateformat=="dmy"){tableclean$DateTime<-dmy_hms(paste(tableclean$Date,tableclean$Time))}
+  if(dateformat=="mdy"){tableclean$DateTime<-mdy_hms(paste(tableclean$Date,tableclean$Time))}
 
-  tableclean$DateTime<-dmy_hms(paste(tableclean$Date,tableclean$Time))
-  tableclean$Time.s<-as.numeric(as.POSIXct(tableclean$DateTime)-as.POSIXct(tableclean$DateTime[1]), units="secs")
+   tableclean$Time.s<-as.numeric(as.POSIXct(tableclean$DateTime)-as.POSIXct(tableclean$DateTime[1]), units="secs")
 
   tableclean<-arrange(tableclean,DateTime)
   write.table(tableclean, paste(paste(wayoutdata,"/",sep=""),newname,".csv",sep=""), sep = ";", dec = ".", row.names = F, qmethod = "double")
@@ -41,9 +43,13 @@ clean.row.pyro <- function(waydata,waydatablank=NULL,newname,wayoutdata=NULL,Gap
     colnames(Table)<- c("Date", "Time", paste("FS",file.position,"Time.s",sep=""),paste("Ox.",chamber.position[file.position]+1,sep=""),paste("Temp.",chamber.position[file.position]+1,sep=""),paste("Ox.",chamber.position[file.position]+2,sep=""),paste("Temp.",chamber.position[file.position]+2,sep=""),paste("Ox.",chamber.position[file.position]+3,sep=""),paste("Temp.",chamber.position[file.position]+3,sep=""),paste("Ox.",chamber.position[file.position]+4,sep=""),paste("Temp.",chamber.position[file.position]+4,sep=""))
     tablecleanblank<-merge(tablecleanblank,Table,by=c("Date","Time"),all=T)
   }
+  if(dateformat=="dmy") {tablecleanblank$DateTime<-dmy_hms(paste(tablecleanblank$Date,tablecleanblank$Time))}
+  if(dateformat=="mdy") {tablecleanblank$DateTime<-mdy_hms(paste(tablecleanblank$Date,tablecleanblank$Time))}
   tablecleanblank$DateTime<-dmy_hms(paste(tablecleanblank$Date,tablecleanblank$Time))
   tablecleanblank$Time.s<-as.numeric(as.POSIXct(tablecleanblank$DateTime)-as.POSIXct(tableclean$DateTime[1]), units="secs")
   write.table(tablecleanblank, paste(paste(wayoutdata,"/",sep=""),newname,"blank.csv",sep=""), sep = ";", dec = ".", row.names = F, qmethod = "double")
-  }
 
+  }
 }
+
+
