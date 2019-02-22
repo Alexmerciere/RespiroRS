@@ -1,5 +1,6 @@
-clean.mat.row <- function(waydata,newname,wayoutdata=NULL ){
+clean.mat.row <- function(waydata,newname,wayoutdata=NULL,Gap=NULL ){
   if (is.null(wayoutdata)) {wayoutdata <- waydata }
+  if (is.null(Gap)) {Gap <- 19 }
 
   fichiers<-list.files(waydata,pattern=".txt")
   tableclean<-data.frame(matrix(data=NA,ncol=2))
@@ -10,7 +11,7 @@ clean.mat.row <- function(waydata,newname,wayoutdata=NULL ){
     rowtab<- read.table(file=a, sep = "\t", fill=T)
     unit<-as.character(rowtab[5,3])
     unit
-    tab <- read.table(file=a,skip=19, sep = "\t", fill=T,header=T)
+    tab <- read.table(file=a,skip=Gap, sep = "\t", fill=T,header=F)
     Table<-tab[,c(1:3,5:12)]
     file.position<-which(fichiers == i)
     chamber.position<-c(0,4,8,12,16)

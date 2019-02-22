@@ -1,4 +1,4 @@
-auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishposition=NULL,blankposition=NULL,Nnoise=NULL,BlankNnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,waittime=NULL,enddiscard=NULL,waittimeblc=NULL,enddiscardblc=NULL,percentpoint=NULL){
+auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishposition=NULL,blankposition=NULL,Nnoise=NULL,BlankNnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,waittime=NULL,enddiscard=NULL,waittimeblc=NULL,enddiscardblc=NULL,percentpoint=NULL,samestart=NULL){
 
   #if (is.null(Data)) {Data<- read.table(paste(way,Fishbase[ which(Fishbase$fishID==fishID[1]),"Data"],sep=""), sep = ";", dec = ".",header = T) }
  # if (is.null(Datablank)) {Datablank<- read.table(paste(way,Fishbase[ which(Fishbase$fishID==fishID[1]),"Datablank"],sep=""), sep = ";", dec = ".",header = T) }
@@ -9,6 +9,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   if (!is.null(correctFirstendslope)) { chamberfirstslope <-correctFirstendslope }
   if (is.null(Nnoisestartdev)) {Nnoisestartdev<- 0.5 }
   if (is.null(percentpoint)) {percentpoint<- 10 }
+  if (is.null(samestart)) {samestart<- F }
 
   if (is.null(Wfish)) {Wfish<- Fishbase[ which(Fishbase$fishID%in%fishID),"W"] }
   if (is.null(fishposition)) {fishposition<- Fishbase[ which(Fishbase$fishID%in%fishID),"Nb_Ch"] }
@@ -154,6 +155,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   res<-data.frame(matrix(ncol=10,nrow=0))
   colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared")
   numbperiods<-round(wholeperiods)-(blankposition-1) + deltaBlankposition
+
   ##Create table with mid time measurment, start and end per chamber
   for (i in 1:numbperiods){
     res[i,1]<-firstmidpoint+(i-1+(blankposition-1))*period -(deltaBlankposition*period) #### blank chamber position to find start firstmid slope
@@ -213,14 +215,18 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   for (l in fishID){
     res<-data.frame(matrix(ncol=11,nrow=0))
     colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared","MO2cor")
-    numbperiods<-round(wholeperiods)-(Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]-1) - deltaBlankposition
+    if(samestart==F){numbperiods<-round(wholeperiods)-(Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]-Fishbase[ which(Fishbase$fishID==fishID[1]),"Nb_Ch"])-deltaBlankposition}
+    if(samestart==T){numbperiods<-round(wholeperiods)- deltaBlankposition}
+
+
     resblc<-data.frame(matrix(ncol=11,nrow=0))
     colnames(resblc)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared","MO2cor")
 
     ##Record Fish Chamber
     ##Create table with mid time measurment, start and end per chamber
     for (i in 1:numbperiods){
-      res[i,1]<-firstmidpoint+(i-1+(Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]-1))*period -(deltaBlankposition*period)
+      if(samestart==F){res[i,1]<-firstmidpoint+(i-1+(Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]-Fishbase[ which(Fishbase$fishID==fishID[1]),"Nb_Ch"]))*period-(deltaBlankposition*period)}
+      if(samestart==T){res[i,1]<-firstmidpoint+(i-1)*period-(deltaBlankposition*period)}
       res[i,2]<-res[i,1]-(measureperiod/2)
       res[i,3]<-res[i,1]+(measureperiod/2)
       Data[,O2column[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]]]<-as.numeric(as.character(Data[,O2column[Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]]]))
