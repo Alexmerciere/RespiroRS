@@ -43,11 +43,11 @@ row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition
     ##Calculate dif
     testdata$dif<-NA
     for (row in 1:nrow(testdata)){
-      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<14900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
+      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<99900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
 
     }
     ##graphic dif
-    c<-ggplot(testdata)+geom_point(aes(x=Time.s,y=dif))+xlim(0,14900)
+    c<-ggplot(testdata)+geom_point(aes(x=Time.s,y=dif))+xlim(0,99900)
     print(c)
 
     ##noise
@@ -57,7 +57,7 @@ row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition
     ##Find first endslope
     Toppos<-list()
     for (row in 1:nrow(testdata)){
-      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<14900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
+      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<99900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
     }
 
     #Time of the first end slope
@@ -66,7 +66,7 @@ row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition
 
     #graph with end slope
 
-    c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,15000) +
+    c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,Firstend+5000) +
       geom_vline(aes(xintercept = Firstend),color="red")
     print(c)
     ggsave(c,filename="firstslope.pdf",path = wayout,width=20, height=4)
@@ -74,7 +74,7 @@ row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition
     if(question2=="NO"){startday <-as.character(readline(prompt="Time of start ?(ex:08:43:01) : "));
     Firstend<-Data[which(Data$Time==startday),"Time.s"]+closetime;
     print(Firstend[1]);
-    c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,15000) +geom_vline(aes(xintercept = Firstend[1]),color="red") ;
+    c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,Firstend+5000) +geom_vline(aes(xintercept = Firstend[1]),color="red") ;
     ggsave(c,filename="firstslopecorrected.pdf",path = wayout,width=20, height=4)}
 
     Firstend<-Firstend[1]-(corfirstslope*period)
@@ -109,7 +109,7 @@ row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition
         b<-lm(linearreg[,2]~linearreg[,1])
         res[i,4]<-b$coefficients[2]
         res[i,5]<-(-b$coefficients[2]*(Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"]-Fishbase[ which(Fishbase$fishID==l),"W"])*3600)
-        res[i,6]<-Datachamberindv[i,3]
+        res[i,6]<-mean(linearreg[,3])
         res[i,7]<-as.character(Data[1,"DateTime"])
         res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
         res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]

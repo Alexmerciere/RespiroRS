@@ -169,7 +169,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
     b<-lm(linearreg[,2]~linearreg[,1])
     res[i,4]<-b$coefficients[2]
     res[i,5]<-(-b$coefficients[2]*(Fishbase[ which(Fishbase$fishID==fishID[1]),"Vol_Ch_Bl"])*3600)
-    res[i,6]<-Datachamberindv[i,3]
+    res[i,6]<-mean(linearreg[,3])
     res[i,7]<-as.character(Data[1,"DateTime"])
     res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
     res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]
@@ -237,7 +237,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
       b<-lm(linearreg[,2]~linearreg[,1])
       res[i,4]<-b$coefficients[2]
       res[i,5]<-(-b$coefficients[2]*(Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"]-Fishbase[ which(Fishbase$fishID==l),"W"])*3600)
-      res[i,6]<-Datachamberindv[i,3]
+      res[i,6]<-mean(linearreg[,3])
       res[i,7]<-as.character(Data[1,"DateTime"])
       res[i,8]<-summary(b)$coefficients["linearreg[, 1]","Std. Error"]
       res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]
@@ -260,7 +260,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
       b<-lm(linearregblc[,2]~linearregblc[,1])
       resblc[i,4]<-b$coefficients[2]
       resblc[i,5]<-(-b$coefficients[2]*(Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"])*3600)
-      resblc[i,6]<-Datachamberindvblc[i,3]
+      resblc[i,6]<-mean(linearregblc[,3])
       resblc[i,7]<-as.character(Data[1,"DateTime"])
       resblc[i,8]<-summary(b)$coefficients["linearregblc[, 1]","Std. Error"]
       resblc[i,9]<-summary(b)$coefficients["linearregblc[, 1]","Pr(>|t|)"]
@@ -289,7 +289,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
       b<-lm(linearregblc[,2]~linearregblc[,1])
       resblcblc[i,4]<-b$coefficients[2]
       resblcblc[i,5]<-(-b$coefficients[2]*(Fishbase[ which(Fishbase$fishID==l),"Vol_Ch_Bl"])*3600)
-      resblcblc[i,6]<-Datachamberindvblc[i,3]
+      resblcblc[i,6]<-mean(linearregblc[,3])
       resblcblc[i,7]<-as.character(Data[1,"DateTime"])
       resblcblc[i,8]<-summary(b)$coefficients["linearregblc[, 1]","Std. Error"]
       resblcblc[i,9]<-summary(b)$coefficients["linearregblc[, 1]","Pr(>|t|)"]
