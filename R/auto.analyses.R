@@ -1,4 +1,4 @@
-auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishposition=NULL,blankposition=NULL,Nnoise=NULL,BlankNnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,waittime=NULL,enddiscard=NULL,waittimeblc=NULL,enddiscardblc=NULL,percentpoint=NULL,samestart=NULL){
+auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishposition=NULL,blankposition=NULL,Nnoise=NULL,BlankNnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,waittime=NULL,enddiscard=NULL,waittimeblc=NULL,enddiscardblc=NULL,percentpoint=NULL,samestart=NULL,blank=NULL){
 
   #if (is.null(Data)) {Data<- read.table(paste(way,Fishbase[ which(Fishbase$fishID==fishID[1]),"Data"],sep=""), sep = ";", dec = ".",header = T) }
  # if (is.null(Datablank)) {Datablank<- read.table(paste(way,Fishbase[ which(Fishbase$fishID==fishID[1]),"Datablank"],sep=""), sep = ";", dec = ".",header = T) }
@@ -14,6 +14,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   if (is.null(Wfish)) {Wfish<- Fishbase[ which(Fishbase$fishID%in%fishID),"W"] }
   if (is.null(fishposition)) {fishposition<- Fishbase[ which(Fishbase$fishID%in%fishID),"Nb_Ch"] }
   if (is.null(blankposition)) {blankposition<- Fishbase[ which(Fishbase$fishID==fishID[1]),"Nb_Ch_Bl"] }
+  if (is.null(blank)) {blank<- T }
 
   ifelse (blankposition==1,deltaBlankposition<-1,deltaBlankposition<-0)
   ifelse (chamberfirstslope==1,corfirstslope<-0,corfirstslope<-chamberfirstslope-1)
@@ -61,12 +62,12 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   ##Calculate dif
   testdata$dif<-NA
   for (row in 1:nrow(testdata)){
-    ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<4900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
+    ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<99900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
 
   }
   ##graphic dif
-  c<-ggplot(testdata)+geom_point(aes(x=Time.s,y=dif))
-  print(c)
+  #c<-ggplot(testdata)+geom_point(aes(x=Time.s,y=dif))
+  #print(c)
 
   ##noise
   noise<-sd(na.omit(subset(Data,Time.s>100&Time.s<200)[,O2column[chamberfirstslope]]))
@@ -75,16 +76,17 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   ##Find first endslope
   Toppos<-list()
   for (row in 1:nrow(testdata)){
-    ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<1900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
+    ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<99900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
   }
 
   #Time of the first end slope
+  if(!length(Toppos) == 0){
   Firstend<-as.numeric(Toppos[[1]])
   print(Firstend)
 
   #graph with end slope
 
-  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,10000) +
+  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,Firstend[1]+5000) +
     geom_vline(aes(xintercept = Firstend),color="red")
   print(c)
   ggsave(c,filename="firstslope.pdf",path = wayout,width=20, height=4)
@@ -92,10 +94,22 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   if(question2=="NO"){startday <-as.character(readline(prompt="Time of start ?(ex:08:43:01) : "));
   Firstend<-Data[which(Data$Time==startday),"Time.s"]+closetime;
   print(Firstend[1]);
-  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,10000) +geom_vline(aes(xintercept = Firstend[1]),color="red") ;
+  c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,Firstend[1]+5000) +geom_vline(aes(xintercept = Firstend[1]),color="red") ;
   ggsave(c,filename="firstslopecorrected.pdf",path = wayout,width=20, height=4)}
 
-  Firstend<-Firstend[1]-(corfirstslope*period)
+  Firstend<-Firstend[1]+(corfirstslope*period)
+  }
+  if(length(Toppos) == 0){
+    print("FIRST END SLOPE NOT FOUND, ADJUST Nnoise or enter Time of start");
+    startday <-as.character(readline(prompt="Time of start ?(ex:08:43:01) : "));
+    Firstend<-Data[which(Data$Time==startday),"Time.s"]+closetime;
+    print(Firstend[1]);
+    c<-ggplot(Data,environment = environment())+geom_point(aes(x=Time.s,y=Data[,O2column[chamberfirstslope]]))+ylab(paste(colnames(Data[O2column[chamberfirstslope]]),unit)) +xlab("Time (sec)")+xlim(0,Firstend[1]+5000) +geom_vline(aes(xintercept = Firstend[1]),color="red") ;
+    ggsave(c,filename="firstslopecorrected.pdf",path = wayout,width=20, height=4)
+
+    Firstend<-Firstend[1]+(corfirstslope*period)
+
+  }
 
 
 
@@ -130,6 +144,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
     ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(BlankNnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA)
   }
   #Time of the first end slope
+  if(!length(Toppos) == 0){
   Firstendblank<-as.numeric(Toppos[[1]])
   print(Firstendblank)
   #graph with end slope and mean temperature during experiment
@@ -144,14 +159,23 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Time.s,y=Datablank[,O2column[fishposition[1]]]))+ylab(paste(colnames(Datablank[O2column[fishposition[1]]]),unit)) +xlab("Time (sec)") + geom_vline(aes(xintercept = Firstendblank,color="red"))
   print(c)
   ggsave(c,filename="firstslopeblankcorrected.pdf",path = wayout,width=20, height=4)}
-
+  }
+  if(length(Toppos) == 0){
+    print("FIRST END SLOPE FOR POST BLANK NOT FOUND, ADJUST Nnoise or enter Time of start")
+    startday <-as.character(readline(prompt="Time of start ?(ex:08:43:01) : "));
+    Firstendblank<-Datablank[which(Datablank$Time==startday),"Time.s"]+closetimeblc;
+    print(Firstendblank);
+    c<-ggplot(Datablank,environment = environment())+geom_point(aes(x=Time.s,y=Datablank[,O2column[fishposition[1]]]))+ylab(paste(colnames(Datablank[O2column[fishposition[1]]]),unit)) +xlab("Time (sec)") + geom_vline(aes(xintercept = Firstendblank,color="red"))
+    print(c)
+    ggsave(c,filename="firstslopeblankcorrected.pdf",path = wayout,width=20, height=4)
+  }
 
   firstmidpointblank<-Firstendblank-enddiscardblc-(measureperiodblc/2)
 
   ###########################################################################################################
 
   ####################################RESULT CHAMBER BLANK######################################################
-
+  if(blank==T) {
   res<-data.frame(matrix(ncol=10,nrow=0))
   colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared")
   numbperiods<-round(wholeperiods)-(blankposition-1) + deltaBlankposition
@@ -205,6 +229,8 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   Blankcorrection<-T
 }
   if (length(Toppos) == 0) { print("No Blank Correction, blank consomption = 0");Blankcorrection<-F}
+  }
+  if(blank==F) {Blankcorrection<-F}
   ########################################################################################
 
 

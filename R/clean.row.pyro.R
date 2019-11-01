@@ -13,6 +13,8 @@ clean.row.pyro <- function(waydata,waydatablank=NULL,newname,wayoutdata=NULL,Gap
     unit<-as.character(rowtab[5,3])
     unit
     tab <- read.table(file=a,skip=Gap, sep = "\t", fill=T,header=F)
+    tab<-apply(tab, 2, gsub, patt=",", replace=".")
+    tab[,c(3,5:15)]<-as.numeric(tab[,c(3,5:15)])
     Table<-tab[,c(1:3,5,9,6,10,7,11,8,12)]
     file.position<-which(fichiers == i)
     chamber.position<-c(0,4,8,12,16)
@@ -37,6 +39,8 @@ clean.row.pyro <- function(waydata,waydatablank=NULL,newname,wayoutdata=NULL,Gap
     unit<-as.character(rowtab[5,3])
     unit
     tab <- read.table(file=a,skip=Gap, sep = "\t", fill=T,header=T)
+    tab<-apply(tab, 2, gsub, patt=",", replace=".")
+    tab[,c(3,5:15)]<-as.numeric(tab[,c(3,5:15)])
     Table<-tab[,c(1:3,5,9,6,10,7,11,8,12)]
     file.position<-which(fichiers2 == i)
     chamber.position<-c(0,4,8,12,16)
