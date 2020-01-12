@@ -1,4 +1,4 @@
-auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishposition=NULL,blankposition=NULL,Nnoise=NULL,BlankNnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,waittime=NULL,enddiscard=NULL,waittimeblc=NULL,enddiscardblc=NULL,percentpoint=NULL,samestart=NULL,blank=NULL){
+auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishposition=NULL,blankposition=NULL,Nnoise=NULL,BlankNnoise=NULL,correctFirstendslope=NULL,Nnoisestartdev=NULL,waittime=NULL,enddiscard=NULL,waittimeblc=NULL,enddiscardblc=NULL,percentpoint=NULL,samestart=NULL,blank=NULL,bk.correction=NULL){
 
   #if (is.null(Data)) {Data<- read.table(paste(way,Fishbase[ which(Fishbase$fishID==fishID[1]),"Data"],sep=""), sep = ";", dec = ".",header = T) }
  # if (is.null(Datablank)) {Datablank<- read.table(paste(way,Fishbase[ which(Fishbase$fishID==fishID[1]),"Datablank"],sep=""), sep = ";", dec = ".",header = T) }
@@ -15,6 +15,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   if (is.null(fishposition)) {fishposition<- Fishbase[ which(Fishbase$fishID%in%fishID),"Nb_Ch"] }
   if (is.null(blankposition)) {blankposition<- Fishbase[ which(Fishbase$fishID==fishID[1]),"Nb_Ch_Bl"] }
   if (is.null(blank)) {blank<- T }
+  if (is.null(bk.correction)) {bk.correction<-"poly"}
 
   ifelse (blankposition==1,deltaBlankposition<-1,deltaBlankposition<-0)
   ifelse (chamberfirstslope==1,corfirstslope<-0,corfirstslope<-chamberfirstslope-1)
@@ -178,11 +179,11 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
   if(blank==T) {
   res<-data.frame(matrix(ncol=10,nrow=0))
   colnames(res)<- c("MidTime (sec)", "StartTime (sec)", "EndTime (sec)","linear coeff","MO2 (mg/h)","Temp(°C)","Date","SE","p-value","Rsquared")
-  numbperiods<-round(wholeperiods)-(blankposition-1) + deltaBlankposition
+  numbperiods<-round(wholeperiods)
 
   ##Create table with mid time measurment, start and end per chamber
   for (i in 1:numbperiods){
-    res[i,1]<-firstmidpoint+(i-1+(blankposition-1))*period -(deltaBlankposition*period) #### blank chamber position to find start firstmid slope
+    res[i,1]<-firstmidpoint +(i-1)*period #### blank chamber position to find start firstmid slope
     res[i,2]<-res[i,1]-(measureperiod/2)
     res[i,3]<-res[i,1]+(measureperiod/2)
     Data[,O2column[blankposition]]<-as.numeric(as.character(Data[,O2column[blankposition]]))
@@ -199,12 +200,25 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
     res[i,9]<-summary(b)$coefficients["linearreg[, 1]","Pr(>|t|)"]
     res[i,10]<-summary(b)$r.squared
   }
+  if(bk.correction=="poly"){
   e<-lm(res[,5] ~ poly(res[,1], 4, raw=TRUE))
 
   polyblank <- function(x) {e$coefficient[5]*x^4 + e$coefficient[4]*x^3 + e$coefficient[3]*x^2 + e$coefficient[2]*x + e$coefficient[1]}
   res$Poly<-polyblank(res[,1])
-  c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]))+ylab(colnames(res[5])) +xlab("Time (h)")+ stat_smooth(aes(x=res[,1]/3600,y=res[,5]),method="lm", se=TRUE, fill=NA,formula=y ~ poly(x, 4, raw=TRUE),colour="blue") +geom_point(aes(x=res[,1]/3600,y=res[,11],colour="red"))
+  c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]))+ylab(colnames(res[5])) +xlab("Time (h)")+ stat_smooth(aes(x=res[,1]/3600,y=res[,5]),method="lm", se=TRUE, fill=NA,formula=y ~ poly(x, 4, raw=TRUE),colour="blue") +geom_point(aes(x=res[,1]/3600,y=res[,11],colour="red"))+ ggtitle("Polynomial regression correction")
+  }
+  if(bk.correction=="lm"){
+    e<-lm(res[,5] ~ res[,1])
 
+    polyblank <- function(x) {e$coefficient[2]*x + e$coefficient[1]}
+    res$Poly<-polyblank(res[,1])
+    c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]))+ylab(colnames(res[5])) +xlab("Time (h)")+ stat_smooth(aes(x=res[,1]/3600,y=res[,5]),method="lm", se=TRUE, fill=NA,formula=y ~ x,colour="blue") +geom_point(aes(x=res[,1]/3600,y=res[,11],colour="red")) + ggtitle("lm regression correction")
+  }
+  if(bk.correction=="reel"){
+
+    res$Poly<-res[,5]
+    c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]))+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=res[,11],colour="red")) + ggtitle("reel value correction")
+  }
 
   Resultblank<-res
   write.table(Resultblank, paste(wayout, "/resultchamberblank.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
@@ -213,6 +227,7 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
 
   #################SLOPE BLANK RESPIRATION##############
   #######################################Find start of slope deviation##################################
+  if(bk.correction%in%c("lm","poly")){
   noise<-sd(Resultblank[c(1:10),5])
   print(noise)
   mean<-mean(Resultblank[c(1:10),5])
@@ -230,13 +245,18 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
 }
   if (length(Toppos) == 0) { print("No Blank Correction, blank consomption = 0");Blankcorrection<-F}
   }
+  if(bk.correction=="reel"){
+    Blankcorrection<-T
+    Firststart<-Resultblank[1,1]}
+  }
   if(blank==F) {Blankcorrection<-F}
+
   ########################################################################################
 
 
   ####################################RESULT CHAMBER FISH###############################################
-  Result<-data.frame(matrix(ncol=12,nrow=0))
-  colnames(Result)<- c("fishID","Date", "Chamber","SMR","sdSMR","MaxMR","MinMR","FirstMR","MeanTemp (°C)","Weight (kg)","Chamber Volume (L)","BlankCorrection")
+  Result<-data.frame(matrix(ncol=13,nrow=0))
+  colnames(Result)<- c("fishID","Date", "Chamber","SMR","sdSMR","MaxMR","MinMR","FirstMR","MeanTemp (°C)","Weight (kg)","Chamber Volume (L)","BlankCorrection","Mean all data")
 
   for (l in fishID){
     res<-data.frame(matrix(ncol=11,nrow=0))
@@ -325,11 +345,15 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
     BlanktailblankO2<<-mean(tail(resblcblc[,5],3))
     BlanktailTime<-mean(tail(resblcblc[,1],3))
 
+if(bk.correction%in%c("lm","poly")){
+
     ##Create linear regression with start and end point of blank slope
     blankcorrectionreg<-subset(Resultblank[,c(1,5)],Resultblank[,1]==Firststart)
     blankcorrectionreg[2,]<-c(BlanktailTime,BlanktailblankO2)
     reg1<-lm(blankcorrectionreg[,2]~blankcorrectionreg[,1])
     regblank <- function(x) reg1$coefficient[2]*x + reg1$coefficient[1]
+
+
 
     ##Create linear regression with start point of blank slope and end point blank fish chamber
     chambercorrectionreg<-subset(Resultblank[,c(1,5)],Resultblank[,1]==Firststart)
@@ -341,8 +365,15 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
     ggsave(d,filename=paste("Chamber",Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"],"Deltaregression.pdf",sep=""),path = wayout,width=20, height=4)
 
     res$deltablankfish<-ifelse(res[,1]>Firststart,regchamber(res[,1])-regblank(res[,1]),0)
+
     res$Poly<-polyblank(res[,1])
     res$MO2cor<-ifelse(res[,1]>Firststart,res[,5] - (res$Poly+res$deltablankfish),res[,5])
+    }
+if(bk.correction=="reel"){
+      res$deltablankfish<-0
+      res$Poly<-NA
+for(j in unique(res[,1])) {res[ which(res[,1]==j),"MO2cor"]<-res[ which(res[,1]==j),5] - Resultblank[ which(Resultblank[,1]==j),5]
+      }
     }
 
     if(Blankcorrection==F) {
@@ -397,7 +428,9 @@ auto.analyses<-function(Data,Fishbase,Datablank,fishID,wayout,Wfish=NULL,fishpos
     Result[which(fishID==l),10]<-Fishbase[ which(Fishbase$fishID==l),"W"]
     Result[which(fishID==l),11]<-Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"]
     Result[which(fishID==l),12]<-ifelse(Blankcorrection==T,"YES","NO")
+    Result[which(fishID==l),13]<-res$MO2cor
   }
   write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
   ResultRun<<-Result
+  }
 }
