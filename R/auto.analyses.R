@@ -370,9 +370,27 @@ if(bk.correction%in%c("lm","poly")){
     res$MO2cor<-ifelse(res[,1]>Firststart,res[,5] - (res$Poly+res$deltablankfish),res[,5])
     }
 if(bk.correction=="reel"){
-      res$deltablankfish<-0
+  ##Create linear regression with start and end point of blank slope
+  blankcorrectionreg<-subset(Resultblank[,c(1,5)],Resultblank[,1]==Firststart)
+  blankcorrectionreg[2,]<-c(BlanktailTime,BlanktailblankO2)
+  reg1<-lm(blankcorrectionreg[,2]~blankcorrectionreg[,1])
+  regblank <- function(x) reg1$coefficient[2]*x + reg1$coefficient[1]
+
+
+
+  ##Create linear regression with start point of blank slope and end point blank fish chamber
+  chambercorrectionreg<-subset(Resultblank[,c(1,5)],Resultblank[,1]==Firststart)
+  chambercorrectionreg[2,]<-c(BlanktailfishTime,Blanktailfish02)
+  reg2<-lm(chambercorrectionreg[,2]~chambercorrectionreg[,1])
+  regchamber <- function(x) reg2$coefficient[2]*x + reg2$coefficient[1]
+
+  d<-ggplot(res,environment=environment())+geom_point(aes(x=res[,1],y=regchamber(res[,1])),colour="red")+geom_point(aes(x=res[,1],y=regblank(res[,1]))) +xlab("Time (h)") +ylab("MO2 (mg/h)")  +xlim(Firststart,max(res[,1]))
+  ggsave(d,filename=paste("Chamber",Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"],"Deltaregression.pdf",sep=""),path = wayout,width=20, height=4)
+
+  res$deltablankfish<-ifelse(res[,1]>Firststart,regchamber(res[,1])-regblank(res[,1]),0)
+
       res$Poly<-NA
-for(j in unique(res[,1])) {res[ which(res[,1]==j),"MO2cor"]<-res[ which(res[,1]==j),5] - Resultblank[ which(Resultblank[,1]==j),5]
+for(j in unique(res[,1])) {res[ which(res[,1]==j),"MO2cor"]<-res[ which(res[,1]==j),5] - Resultblank[ which(Resultblank[,1]==j),5]- res[ which(res[,1]==j),12]
       }
     }
 
@@ -402,6 +420,7 @@ for(j in unique(res[,1])) {res[ which(res[,1]==j),"MO2cor"]<-res[ which(res[,1]=
     #write Table
     write.table(res, paste(wayout, "/", "resultchamber", Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"], ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
     write.table(resblc, paste(wayout, "/", "resultblankchamber", Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"],".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+    write.table(resblcblc, paste(wayout, "/", "resultblankchamberblank.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 
 
     c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]),alpha=0.1)+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=MO2cor,colour=selection)) +scale_color_manual(values = c("NotUsedInSMRcalculation" = "black","RsquaredOutlier" = "red","meanLowestO2valueOutlier"="blue","SMR" = "green"))
@@ -428,7 +447,7 @@ for(j in unique(res[,1])) {res[ which(res[,1]==j),"MO2cor"]<-res[ which(res[,1]=
     Result[which(fishID==l),10]<-Fishbase[ which(Fishbase$fishID==l),"W"]
     Result[which(fishID==l),11]<-Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"]
     Result[which(fishID==l),12]<-ifelse(Blankcorrection==T,"YES","NO")
-    Result[which(fishID==l),13]<-res$MO2cor
+    Result[which(fishID==l),13]<-mean(res$MO2cor)
   }
   write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
   ResultRun<<-Result
