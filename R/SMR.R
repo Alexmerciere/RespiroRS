@@ -1,48 +1,60 @@
-SMR<-function(data,metadata,fishID,wayout){
+SMR<-function(data,Fishbase,fishID,wayout,nsdevsrsquared=NULL,percentpoint=NULL){
+res<-data
+  if (is.null(nsdevsrsquared)) {nsdevsrsquared<-0.5}
+if (is.null(percentpoint)) {percentpoint<-10}
+numberoflowvalues<-nrow(res)*percentpoint/100
+firstmidpoint<-data[1,1]
+
+####################################RESULT CHAMBER FISH###############################################
+Result<-data.frame(matrix(ncol=13,nrow=0))
+colnames(Result)<- c("fishID","Date", "Chamber","SMR","sdSMR","MaxMR","MinMR","FirstMR","MeanTemp (°C)","Weight (kg)","Chamber Volume (L)","BlankCorrection","Mean all data")
 
 
   # layer SMR
   #Rsquared layer
-  meanRsquared <- mean(data$Rsquared)
-  SdRsquared <- sd(data$Rsquared)
-  resstep1 <- subset(data, data[, 10] > (meanRsquared - (nsdevsrsquared * SdRsquared)))
+  meanRsquared <- mean(res$Rsquared)
+  SdRsquared <- sd(res$Rsquared)
+  resstep1 <- subset(res, res[, 10] > (meanRsquared - (nsdevsrsquared * SdRsquared)))
 
   #lowest value layer
-  LowestO2valueOutlier <- sort(resstep1[, 11], decreasing = F)[1:numberoflowvalues]
-  resstep2 <- subset(resstep1, resstep1[, 11] %in% c(LowestO2valueOutlier))
+  LowestO2valueOutlier <- sort(resstep1[, 5], decreasing = F)[1:numberoflowvalues]
+  resstep2 <- subset(resstep1, resstep1[, 5] %in% c(LowestO2valueOutlier))
 
   #Mean lowest value layer
-  meanLowestO2values <- mean(resstep2$MO2cor)
-  SdLowestO2values <- sd(resstep2$MO2cor)
-  resstep3 <- subset(resstep2, resstep2[, 11] > (meanLowestO2values - (0.5 * SdLowestO2values)) & resstep2[, 11] < (meanLowestO2values + (2 * SdLowestO2values)))
+  meanLowestO2values <- mean(resstep2[, 5])
+  SdLowestO2values <- sd(resstep2[, 5])
+  resstep3 <- subset(resstep2, resstep2[, 5] > (meanLowestO2values - (0.5 * SdLowestO2values)) & resstep2[, 5] < (meanLowestO2values + (2 * SdLowestO2values)))
 
-  data$selection <- ifelse(data[, 11] %in% resstep3[, 11] & data[, 10] %in% resstep3[, 10], "SMR", ifelse(data[, 11] %in% resstep2[, 11] & data[, 10] %in% resstep2[, 10],"meanLowestO2valueOutlier", ifelse(data[, 11] %in% resstep1[, 11] & data[, 10] %in% resstep1[, 10], "NotUsedInSMRcalculation", "RsquaredOutlier")))
+  res$selection <- ifelse(res[, 5] %in% resstep3[, 5] & res[, 10] %in% resstep3[, 10], "SMR", ifelse(res[, 5] %in% resstep2[, 5] & res[, 10] %in% resstep2[, 10],"meanLowestO2valueOutlier", ifelse(res[, 5] %in% resstep1[, 5] & res[, 10] %in% resstep1[, 10], "NotUsedInSMRcalculation", "RsquaredOutlier")))
   #write Table
-  write.table(data, paste(wayout, "/", "resultchambercorrect", Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"], ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+  write.table(res, paste(wayout, "/", "resultchamber", Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"], ".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+  write.table(resblc, paste(wayout, "/", "resultblankchamber", Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"],".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+  write.table(resblcblc, paste(wayout, "/", "resultblankchamberblank.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 
 
-#####################################Final Table###################################################
-l<-fishID
-Result[which(fishID==l),1]<-l
-Result[which(fishID==l),2]<-date(data$Date[[1]])
-Result[which(fishID==l),3]<-Fishbase[ which(metadata$fishID==l),"Nb_Ch"]
-Result[which(fishID==l),4]<-mean(subset(res,res$selection=="SMR")$MO2cor)
-Result[which(fishID==l),5]<-sd(subset(res,res$selection=="SMR")$MO2cor)
-Result[which(fishID==l),6]<-max(subset(res,!res$selection=="RsquaredOutlier")$MO2cor)
-Result[which(fishID==l),7]<-min(subset(res,res$selection=="SMR")$MO2cor)
+  c<-ggplot(res,environment = environment())+geom_point(aes(x=res[,1]/3600,y=res[,5]),alpha=0.1)+ylab(colnames(res[5])) +xlab("Time (h)") +geom_point(aes(x=res[,1]/3600,y=MO2cor,colour=selection)) +scale_color_manual(values = c("NotUsedInSMRcalculation" = "black","RsquaredOutlier" = "red","meanLowestO2valueOutlier"="blue","SMR" = "green"))
+  ggsave(c,filename=paste("Chamber",Fishbase[ which(Fishbase$fishID==fishID),"Nb_Ch"],".pdf",sep=""),path = wayout,width=20, height=4)
+  print(c)
+  #####################################Final Table###################################################
+
+  Result[which(fishID==fishID),1]<-fishID
+  Result[which(fishID==fishID),2]<-res$Date[[1]]
+  Result[which(fishID==fishID),3]<-Fishbase[ which(Fishbase$fishID==fishID),"Nb_Ch"]
+  Result[which(fishID==fishID),4]<-mean(subset(res,res$selection=="SMR")$MO2cor)
+  Result[which(fishID==fishID),5]<-sd(subset(res,res$selection=="SMR")$MO2cor)
+  Result[which(fishID==fishID),6]<-max(subset(res,!res$selection=="RsquaredOutlier")$MO2cor)
+  Result[which(fishID==fishID),7]<-min(subset(res,res$selection=="SMR")$MO2cor)
 
 
-###FirstMR###
-FMRmidpoint<-firstmidpoint+(1-1+(Fishbase[ which(Fishbase$fishID==l),"Nb_Ch"]-1))*period
-FMRstartpoint<-res[1,1]-(measureperiod/2)
-linearregFMR<-subset(Datachamberindv, Datachamberindv$Time.s>=FMRstartpoint & Datachamberindv$Time.s<=FMRmidpoint)
-b<-lm(linearregFMR[,2]~linearregFMR[,1])
-Result[which(fishID==l),8]<-(-b$coefficients[2]*(Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"]-Fishbase[ which(Fishbase$fishID==l),"W"])*3600)
-Result[which(fishID==l),9]<-mean(res[,6])
-Result[which(fishID==l),10]<-Fishbase[ which(Fishbase$fishID==l),"W"]
-Result[which(fishID==l),11]<-Fishbase[ which(Fishbase$fishID==l),"Vol_Ch"]
-Result[which(fishID==l),12]<-ifelse(Blankcorrection==T,"YES","NO")
+  ###FirstMR###
+  Result[which(fishID==fishID),8]<- NA
+  Result[which(fishID==fishID),9]<-mean(res[,6])
+  Result[which(fishID==fishID),10]<-Fishbase[ which(Fishbase$fishID==fishID),"W"]
+  Result[which(fishID==fishID),11]<-Fishbase[ which(Fishbase$fishID==fishID),"Vol_Ch"]
+  Result[which(fishID==fishID),12]<-"NO"
+  Result[which(fishID==fishID),13]<-mean(subset(res,!res$selection=="RsquaredOutlier")[, 5])
+
 }
-write.table(Result, paste(wayout, "/", "ResultRun.csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
+write.table(Result, paste(wayout, "/", "Result",fishID,".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 ResultRun<<-Result
 }

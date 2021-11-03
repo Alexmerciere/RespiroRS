@@ -43,7 +43,7 @@ row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition
     ##Calculate dif
     testdata$dif<-NA
     for (row in 1:nrow(testdata)){
-      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<99900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
+      ifelse(testdata[row,1]>(testdata[1,1]+99+adustfirstslope) & testdata[row,1]<99900+adustfirstslope,testdata[row,4]<-(testdata[(row+50),3]-testdata[row,3]-(testdata[row,3]-testdata[(row-50),3])),testdata[row,4]<-NA)
 
     }
     ##graphic dif
@@ -51,13 +51,13 @@ row.analyses.table<-function(Data,Fishbase,fishID,wayout,Wfish=NULL,fishposition
     print(c)
 
     ##noise
-    noise<-sd(na.omit(subset(Data,Time.s>100&Time.s<200)[,O2column[chamberfirstslope]]))
+    noise<-sd(na.omit(subset(Data,Time.s>(Data[1,"Time.s"]+100)&Time.s<(Data[1,"Time.s"]+200))[,O2column[chamberfirstslope]]))
     print(noise)
 
     ##Find first endslope
     Toppos<-list()
     for (row in 1:nrow(testdata)){
-      ifelse(testdata[row,1]>99+adustfirstslope & testdata[row,1]<99900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
+      ifelse(testdata[row,1]>testdata[1,1]+99+adustfirstslope & testdata[row,1]<99900+adustfirstslope,ifelse(testdata[row,4]>testdata[(row-1),4] & testdata[row,4]>testdata[(row-5),4] & testdata[row,4]>testdata[(row-7),4] & testdata[row,4]>testdata[(row+1),4] & testdata[row,4]>testdata[(row+5),4] & testdata[row,4]>testdata[(row+7),4] & testdata[row,4]>(Nnoise*noise),Toppos<-list.append(Toppos,testdata[row,1]),NA),NA)
     }
 
     #Time of the first end slope
