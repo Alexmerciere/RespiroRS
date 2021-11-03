@@ -51,7 +51,7 @@ colnames(Result)<- c("fishID","Date", "Chamber","SMR","sdSMR","MaxMR","MinMR","F
   Result[which(fishID==fishID),12]<-"NO"
   Result[which(fishID==fishID),13]<-mean(subset(res,!res$selection=="RsquaredOutlier")[, 5])
 
-}
+
 write.table(Result, paste(wayout, "/", "Result",fishID,".csv", sep = ""), sep = ";", dec = ".", row.names = F, qmethod = "double")
 ResultRun<<-Result
 }
